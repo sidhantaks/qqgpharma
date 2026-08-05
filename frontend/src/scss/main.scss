@@ -1,0 +1,44 @@
+@import "./abstract/abstract";
+@import "bootstrap/scss/bootstrap.scss";
+@import "./base/base";
+@import "./components/components";
+@import "./pages/pages";
+@import "./layout/layout";
+/* Card animation */
+.service-card {
+  transition: all 0.4s ease;
+}
+
+.service-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+}
+
+/* Icon styling */
+.service-icon {
+  font-size: 40px;
+  color: #020288;
+  transition: all 0.4s ease;
+}
+
+/* Icon hover animation */
+.service-card:hover .service-icon {
+  transform: scale(1.2) rotate(8deg);
+  color: #0d6efd;
+}
+
+/* Fade animation */
+.slider-item {
+  animation: fadeUp 0.8s ease;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

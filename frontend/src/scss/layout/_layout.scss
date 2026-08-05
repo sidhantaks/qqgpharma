@@ -1,0 +1,17 @@
+/* ==================
+	9. Layout
+=================== */
+@import "./header";
+@import "./widget";
+@import "./footer";
+
+/* Site wrapper so pages can stretch between header and footer */
+.site-wrapper{
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+.site-content{
+	flex: 1 0 auto;
+}
+
