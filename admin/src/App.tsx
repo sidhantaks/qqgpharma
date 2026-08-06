@@ -6,10 +6,9 @@ import Customers from "./pages/Customers";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
+import RequireAuth from "./components/auth/RequireAuth";
 
 export default function App() {
-  const isAuth = typeof window !== 'undefined' && !!localStorage.getItem('token');
-
   return (
     <>
       <Router>
@@ -17,12 +16,12 @@ export default function App() {
         <Routes>
           {/* Dashboard Layout */}
           <Route element={<AppLayout />}>
-            <Route index path="/" element={isAuth ? <Home /> : <Navigate to="/signin" replace />} />
+            <Route index path="/" element={<RequireAuth><Home /></RequireAuth>} />
 
             {/* Others Page */}
-            <Route path="/change-password" element={<ChangePassword />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/customers" element={<Customers />} />
+            <Route path="/change-password" element={<RequireAuth><ChangePassword /></RequireAuth>} />
+            <Route path="/services" element={<RequireAuth><Services /></RequireAuth>} />
+            <Route path="/customers" element={<RequireAuth><Customers /></RequireAuth>} />
 
           </Route>
 
