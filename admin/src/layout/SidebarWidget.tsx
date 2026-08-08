@@ -11,7 +11,7 @@ export default function SidebarWidget() {
         Leading provider of GMP consultancy and regulatory services.
       </p>
       <a
-        href="https://www.qgpharma.com"
+        href="https://demoislara.tech/"
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center justify-center p-3 font-medium text-white rounded-lg bg-brand-500 text-theme-sm hover:bg-brand-600"
