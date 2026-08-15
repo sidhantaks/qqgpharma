@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { apiPath } from '../../config/api';
 import { useNavigate, Link } from 'react-router-dom';
 import { showLogoutNotice } from '../utils/logoutNotice';
 
@@ -26,7 +27,7 @@ export default function CustomerDashboard(){
     const token = localStorage.getItem('customer_token');
     if (!token) { navigate('/login'); return; }
     setLoading(true);
-    fetch('http://localhost:5000/api/customer/me', { headers: { Authorization: 'Bearer '+token } })
+    fetch(apiPath(`/customer/me`), { headers: { Authorization: 'Bearer '+token } })
       .then(r => r.json())
       .then(async j => {
         if (!j.success) { setError(j.error || j.message || 'Failed'); if (j.error === 'Invalid token' || j.message === 'Invalid token') { localStorage.removeItem('customer_token'); navigate('/login'); } setLoading(false); return; }
@@ -79,7 +80,7 @@ export default function CustomerDashboard(){
         });
         // Fetch other registrations to show related services
         try {
-          const regsRes = await fetch('http://localhost:5000/api/registration');
+          const regsRes = await fetch(apiPath(`/registration`));
           const regsJson = await regsRes.json().catch(()=>({}));
           if (regsRes.ok && regsJson.success) {
             const others = regsJson.data.filter(r => r._id !== j.data._id && r.userCategory === j.data.userCategory && Array.isArray(r.servicesOffered) && r.servicesOffered.length);
@@ -119,7 +120,7 @@ export default function CustomerDashboard(){
       return;
     }
     try {
-      const res = await fetch(`http://localhost:5000/api/registration/check-username?username=${encodeURIComponent(name)}`);
+      const res = await fetch(apiPath(`/registration/check-username?username=${encodeURIComponent(name)}`));
       const json = await res.json().catch(()=>({}));
       if (res.ok) {
         if (!json.available) setFieldErrors(prev => ({ ...(prev||{}), username: 'Username already exists' }));
@@ -160,7 +161,7 @@ export default function CustomerDashboard(){
     // if password empty, remove it so backend doesn't change
     if (!payload.password) delete payload.password;
 
-    fetch(`http://localhost:5000/api/registration/${profile._id}`, {
+    fetch(apiPath(`/registration/${profile._id}`), {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -465,7 +466,6 @@ export default function CustomerDashboard(){
                       ))}
                     </div>
                   )}
-
                 </div>
               </div>
             </div>

@@ -12,8 +12,14 @@ app.use(cors());
 app.use(express.json());
 
 // Simple request logger to help debug incoming requests
+const fs = require('fs');
+const reqLog = (msg) => {
+  try { fs.appendFileSync('./requests.log', msg + '\n'); } catch (e) { /* ignore */ }
+};
 app.use((req, res, next) => {
-  console.log(new Date().toISOString(), req.method, req.originalUrl);
+  const line = `${new Date().toISOString()} ${req.method} ${req.originalUrl}`;
+  console.log(line);
+  reqLog(line);
   next();
 });
 
@@ -33,9 +39,43 @@ app.use('/api/registration', registrationRoutes);
 const customerAuth = require('./routes/customerAuth');
 app.use('/api/customer', customerAuth);
 
-// Services CRUD
+// Services CRUD (renamed to expert-services)
 const serviceRoutes = require('./routes/serviceRoutes');
-app.use('/api/services', serviceRoutes);
+app.use('/api/expert-services', serviceRoutes);
+
+// Service categories, subcategories and integrated services
+const serviceCategoryRoutes = require('./routes/serviceCategoryRoutes');
+app.use('/api/service-categories', serviceCategoryRoutes);
+// console.log('Mounted /api/service-categories');
+const serviceSubcategoryRoutes = require('./routes/serviceSubcategoryRoutes');
+app.use('/api/service-subcategories', serviceSubcategoryRoutes);
+// console.log('Mounted /api/service-subcategories');
+const integratedServiceRoutes = require('./routes/integratedServiceRoutes');
+app.use('/api/integrated-services', integratedServiceRoutes);
+// console.log('Mounted /api/integrated-services');
+
+// Directly mount controllers as fallback in case router mounting fails
+try {
+  const serviceCategoryController = require('./controllers/serviceCategoryController');
+  app.get('/api/service-categories', serviceCategoryController.list);
+  app.post('/api/service-categories', serviceCategoryController.create);
+  app.put('/api/service-categories/:id', serviceCategoryController.update);
+  app.delete('/api/service-categories/:id', serviceCategoryController.remove);
+
+  const serviceSubcategoryController = require('./controllers/serviceSubcategoryController');
+  app.get('/api/service-subcategories', serviceSubcategoryController.list);
+  app.post('/api/service-subcategories', serviceSubcategoryController.create);
+  app.put('/api/service-subcategories/:id', serviceSubcategoryController.update);
+  app.delete('/api/service-subcategories/:id', serviceSubcategoryController.remove);
+
+  const integratedServiceController = require('./controllers/integratedServiceController');
+  app.get('/api/integrated-services', integratedServiceController.list);
+  app.post('/api/integrated-services', integratedServiceController.create);
+  app.put('/api/integrated-services/:id', integratedServiceController.update);
+  app.delete('/api/integrated-services/:id', integratedServiceController.remove);
+} catch (e) {
+  console.warn('Failed to mount direct service controllers fallback', e && e.message);
+}
 
 // Debug: list mounted API routes
 app.get('/api/_routes', (req, res) => {
@@ -96,10 +136,57 @@ async function start() {
   app.listen(PORT, () => {
       console.log(`Server running on ${PORT}`);
   });
+      // Debug direct model readers
+      app.get('/debug/service-categories', async (req, res) => {
+        try {
+          const ServiceCategory = require('./models/ServiceCategory');
+          const items = await ServiceCategory.find().sort({ name: 1 });
+          return res.json({ success: true, data: items });
+        } catch (e) { return res.status(500).json({ success: false, error: String(e) }); }
+      });
+      app.get('/debug/service-subcategories', async (req, res) => {
+        try {
+          const ServiceSubcategory = require('./models/ServiceSubcategory');
+          const items = await ServiceSubcategory.find().populate('category', 'name').sort({ name: 1 });
+          return res.json({ success: true, data: items });
+        } catch (e) { return res.status(500).json({ success: false, error: String(e) }); }
+      });
+      app.get('/debug/integrated-services', async (req, res) => {
+        try {
+          const IntegratedService = require('./models/IntegratedService');
+          const items = await IntegratedService.find().populate('category', 'name').populate('subcategory', 'name').sort({ name: 1 });
+          return res.json({ success: true, data: items });
+        } catch (e) { return res.status(500).json({ success: false, error: String(e) }); }
+      });
+  // print routes once server listening
+  setTimeout(listRoutes, 200);
   } catch (err) {
     console.error('Failed to start server', err);
     process.exit(1);
   }
 }
 
+// Diagnostic: print mounted routes after server starts
+function listRoutes() {
+  try {
+    const routes = [];
+    if (app && app._router && app._router.stack) {
+      app._router.stack.forEach((layer) => {
+        if (layer.route && layer.route.path) {
+          const methods = Object.keys(layer.route.methods).map(m=>m.toUpperCase()).join(',');
+          routes.push({ path: layer.route.path, methods });
+        } else if (layer.name === 'router' && layer.handle && layer.handle.stack) {
+          // attempt to discover mount path
+          const mount = layer.regexp && layer.regexp.source ? layer.regexp.source : '<router>';
+          routes.push({ path: String(mount), methods: '<router>' });
+        }
+      });
+    }
+    // console.log('Mounted routes (diagnostic):', JSON.stringify(routes, null, 2));
+  } catch (e) {
+    console.warn('Failed to list routes', e);
+  }
+}
+
 start();
+setTimeout(listRoutes, 600);

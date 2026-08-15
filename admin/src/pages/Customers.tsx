@@ -14,6 +14,7 @@ export default function Customers() {
   const pageSize = 10;
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<Customer | null>(null);
+  
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +58,8 @@ export default function Customers() {
       cancelled = true;
     };
   }, [page, query]);
+
+  
 
   // Server-side pagination: `customers` already contains current page items
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -151,10 +154,9 @@ export default function Customers() {
                     setPage(1);
                   }}
                   className="form-input rounded-md border px-3 py-1 text-sm"
-                />
+                />               
               </div>
             </div>
-
             {loading && <div>Loading...</div>}
             {error && <div className="text-red-500">{error}</div>}
 

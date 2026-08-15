@@ -1,13 +1,13 @@
 import PageMeta from "../components/common/PageMeta";
 import { useEffect, useState } from "react";
+import { apiPath } from "../config/api";
 import Button from "../components/ui/button/Button";
 import Alert from "../components/ui/alert/Alert";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 
 type Service = { _id?: string; serviceName: string };
 
-
-export default function Services() {
+export default function ExpertServices() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,19 +25,19 @@ export default function Services() {
     setError(null);
     try {
       const qParam = query ? `&q=${encodeURIComponent(query)}` : "";
-      const res = await fetch(`/api/services?page=${page}&limit=${limit}${qParam}`);
+      const res = await fetch(apiPath(`/expert-services?page=${page}&limit=${limit}${qParam}`));
       const text = await res.text().catch(() => "");
       let j: any = {};
       try {
         j = text ? JSON.parse(text) : {};
       } catch (e) {
-        return setError(`Failed to load services: ${res.status} ${text.slice(0, 300)}`);
+        return setError(`Failed to load expert services: ${res.status} ${text.slice(0, 300)}`);
       }
       if (j && j.success && Array.isArray(j.data)) {
         setServices(j.data);
         setTotal(typeof j.total === 'number' ? j.total : j.data.length);
       } else {
-        return setError(j?.error || `Failed to load services: ${res.status} ${JSON.stringify(j).slice(0,300)}`);
+        return setError(j?.error || `Failed to load expert services: ${res.status} ${JSON.stringify(j).slice(0,300)}`);
       }
     } catch (e: any) {
       setError(e.message || String(e));
@@ -48,7 +48,6 @@ export default function Services() {
 
   useEffect(() => { fetchServices(); }, [page, query]);
 
-  // Auto-dismiss success/error
   useEffect(() => {
     if (success) {
       const t = setTimeout(() => setSuccess(null), 3500);
@@ -66,14 +65,14 @@ export default function Services() {
   const openEdit = (s: Service) => { setEditing(s); setName(s.serviceName); setShowModal(true); };
 
   const save = async () => {
-    if (!name.trim()) return setError('Service name required');
+    if (!name.trim()) return setError('Expert service name required');
     try {
       const body = { serviceName: name.trim() };
       let res;
       if (editing && editing._id) {
-        res = await fetch(`/api/services/${editing._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        res = await fetch(apiPath(`/expert-services/${editing._id}`), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       } else {
-        res = await fetch(`/api/services`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        res = await fetch(apiPath(`/expert-services`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       }
       const text = await res.text().catch(() => "");
       let j: any = {};
@@ -82,7 +81,7 @@ export default function Services() {
       }
       if (!j || !j.success) return setError(j?.error || `Save failed: ${res.status}`);
       setShowModal(false);
-      setSuccess(editing ? 'Service updated' : 'Service created');
+      setSuccess(editing ? 'Expert service updated' : 'Expert service created');
       fetchServices();
     } catch (e: any) {
       setError(e.message || String(e));
@@ -91,17 +90,16 @@ export default function Services() {
 
   const remove = async (id?: string) => {
     if (!id) return;
-    if (!confirm('Delete this service?')) return;
+    if (!confirm('Delete this expert service?')) return;
     try {
-      const res = await fetch(`/api/services/${id}`, { method: 'DELETE' });
+      const res = await fetch(apiPath(`/expert-services/${id}`), { method: 'DELETE' });
       const text = await res.text().catch(() => "");
       let j: any = {};
       try { j = text ? JSON.parse(text) : {}; } catch (e) {
         return setError(`Delete failed: ${res.status} ${text.slice(0,300)}`);
       }
       if (!j || !j.success) return setError(j?.error || `Delete failed: ${res.status}`);
-      setSuccess('Service deleted');
-      // if deleting last item on page, go back a page
+      setSuccess('Expert service deleted');
       const remaining = total - 1;
       const totalPages = Math.max(1, Math.ceil(remaining / limit));
       if (page > totalPages) setPage(totalPages);
@@ -113,21 +111,21 @@ export default function Services() {
 
   return (
     <>
-      <PageMeta title="Services List" description="Services management" />
-      <PageBreadcrumb pageTitle="Services List" />
+      <PageMeta title="Expert Services" description="Expert services management" />
+      <PageBreadcrumb pageTitle="Expert Services" />
       <div className="grid grid-cols-12 gap-4 md:gap-6">
         <div className="col-span-12">
           <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Services List</h3>
+              <h3 className="text-lg font-semibold">Expert Services</h3>
               <div className="flex items-center gap-2">
                 <input
-                  placeholder="Search services"
+                  placeholder="Search expert services"
                   value={query}
                   onChange={(e) => { setQuery(e.target.value); setPage(1); }}
                   className="form-input rounded-md border px-3 py-1 text-sm"
                 />
-                <Button size="sm" variant="primary" onClick={openAdd}>Add New Service</Button>
+                <Button size="sm" variant="primary" onClick={openAdd}>Add New Expert Service</Button>
               </div>
             </div>
 
@@ -141,7 +139,7 @@ export default function Services() {
                   <thead>
                     <tr>
                       <th className="py-2">SL No</th>
-                      <th className="py-2">Service Name</th>
+                      <th className="py-2">Expert Service Name</th>
                       <th className="py-2">Actions</th>
                     </tr>
                   </thead>
@@ -188,7 +186,7 @@ export default function Services() {
                     ))}
                     {services.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="py-4 text-center text-sm text-gray-500">No services found.</td>
+                        <td colSpan={3} className="py-4 text-center text-sm text-gray-500">No expert services found.</td>
                       </tr>
                     )}
                   </tbody>
@@ -223,11 +221,11 @@ export default function Services() {
         <div className="fixed inset-0 z-[100000] overflow-auto flex items-start md:items-center justify-center bg-black/40 p-4">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">{editing ? 'Edit Service' : 'Add Service'}</h3>
+              <h3 className="text-lg font-semibold">{editing ? 'Edit Expert Service' : 'Add Expert Service'}</h3>
               <Button size="sm" variant="outline" onClick={() => setShowModal(false)}>Close</Button>
             </div>
             <div className="space-y-3">
-              <label className="text-xs text-gray-500">Service Name</label>
+              <label className="text-xs text-gray-500">Expert Service Name</label>
               <input value={name} onChange={(e) => setName(e.target.value)} className="form-input w-full rounded-md border px-3 py-2" />
               <div className="flex items-center justify-end gap-2">
                 <Button size="sm" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>

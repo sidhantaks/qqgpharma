@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { apiPath } from '../../config/api';
 
 // Import Images
 import logo from "../../images/logo.png";
@@ -25,7 +26,7 @@ class FormLogin extends Component {
 		e.preventDefault();
 		const { username, password } = this.state;
 		this.setState({ error: '' });
-		fetch('http://localhost:5000/api/customer/login', {
+		fetch(apiPath(`/customer/login`), {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ username, password })
@@ -39,7 +40,7 @@ class FormLogin extends Component {
 			localStorage.setItem('customer_token', token);
 			// attempt to fetch profile and store it so header can update immediately
 			try {
-				const meRes = await fetch('http://localhost:5000/api/customer/me', { headers: { Authorization: `Bearer ${token}` } });
+				const meRes = await fetch(apiPath(`/customer/me`), { headers: { Authorization: `Bearer ${token}` } });
 				const meJson = await meRes.json().catch(() => ({}));
 				if (meRes.ok && meJson && meJson.data) {
 					localStorage.setItem('customer_profile', JSON.stringify(meJson.data));
@@ -90,22 +91,22 @@ class FormLogin extends Component {
 										<div className="logo text-center mb-3">
 											<h1 className="text-primary">Customer Login</h1>
 										</div>
-																				<form onSubmit={this.handleSubmit}>
-																					<div className="form-group">
-																						<input name="username" value={this.state.username} onChange={this.handleChange} type="text" className="form-control" placeholder="Username" />
-																					</div>
-																					<div className="form-group">
-																						<input name="password" value={this.state.password} onChange={this.handleChange} type="password" className="form-control" placeholder="Password" />
-																					</div>
-																					{this.state.error && <div className="text-danger mb-2">{this.state.error}</div>}
-																					<div className="form-group">
-																						<button type="submit" className="btn mb-30 btn-lg btn-primary w-100">Login</button>
-																					</div>
-																					<div className="text-center mt-40">
-																						<p className="mt-0">Dont have any account?</p>
-																						<Link className="btn btn-lg btn-secondary w-100" data-toggle="tab" to="/form-register">Register</Link>
-																					</div>
-																				</form>
+										<form onSubmit={this.handleSubmit}>
+											<div className="form-group">
+												<input name="username" value={this.state.username} onChange={this.handleChange} type="text" className="form-control" placeholder="Username" />
+											</div>
+											<div className="form-group">
+												<input name="password" value={this.state.password} onChange={this.handleChange} type="password" className="form-control" placeholder="Password" />
+											</div>
+											{this.state.error && <div className="text-danger mb-2">{this.state.error}</div>}
+											<div className="form-group">
+												<button type="submit" className="btn mb-30 btn-lg btn-primary w-100">Login</button>
+											</div>
+											<div className="text-center mt-40">
+												<p className="mt-0">Dont have any account?</p>
+												<Link className="btn btn-lg btn-secondary w-100" data-toggle="tab" to="/form-register">Register</Link>
+											</div>
+										</form>
 									</div>
 								</div>
 							</div>

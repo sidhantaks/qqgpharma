@@ -27,8 +27,17 @@ const navItems: NavItem[] = [
   },
   {
     icon: <BoxCubeIcon />,
+    name: "Expert Services",
+    path: "/expert-services",
+  },
+  {
+    icon: <BoxCubeIcon />,
     name: "Services",
-    path: "/services",
+    subItems: [
+      { name: "Service Categories", path: "/service-categories" },
+      { name: "Service Subcategories", path: "/service-subcategories" },
+      { name: "Integrated Services", path: "/integrated-services" },
+    ],
   },
   {
     icon: <UserCircleIcon />,

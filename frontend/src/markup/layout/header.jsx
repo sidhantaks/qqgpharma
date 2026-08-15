@@ -206,14 +206,14 @@ const Header = () => {
 										<li className="btn-area"><Link to="/login" className="btn btn-primary shadow">LOGIN <i className="btn-icon-bx fas fa-chevron-right"></i></Link></li>
 									)
 								) : (
-									<>
-										{isMobileView && (
+									isMobileView && (
+										<>
 											<li className="btn-area d-flex align-items-center me-2">
 												<Link to="/customer/dashboard" className="btn btn-outline-primary">MY ACCOUNT</Link>
 											</li>
-										)}
-										<li className="btn-area"><button onClick={() => { showLogoutNotice(() => { setIsCustomerLoggedIn(false); window.location.href = '/'; }); }} className="btn btn-secondary">LOGOUT</button></li>
-									</>
+											<li className="btn-area"><button onClick={() => { showLogoutNotice(() => { setIsCustomerLoggedIn(false); window.location.href = '/'; }); }} className="btn btn-secondary">LOGOUT</button></li>
+										</>
+									)
 								)}
 							</ul>
 						</div>
@@ -241,7 +241,7 @@ const Header = () => {
 												</Link>
 											)}
 											{(isMobileView || activeItem === item.id) && item.subItems && (
-												<ul className={`sub-menu ${item.id === '	services' ? 'two-col' : ''}`}>
+												<ul className={`sub-menu ${item.id === 'services' ? 'two-col' : ''}`}>
 													{item.subItems.map((subItem, index) => (
 														<li key={subItem.id}><Link to={`/${subItem.linkName}`} onClick={handleMenuLinkClick}><span>{subItem.displayName}</span></Link></li>
 													))}

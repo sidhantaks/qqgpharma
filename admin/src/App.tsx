@@ -1,8 +1,11 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
 import SignIn from "./pages/AuthPages/SignIn";
 import ChangePassword from "./pages/ChangePassword";
-import Services from "./pages/Services";
+import ExpertServices from "./pages/ExpertServices";
 import Customers from "./pages/Customers";
+import ServiceCategories from "./pages/ServiceCategories";
+import ServiceSubcategories from "./pages/ServiceSubcategories";
+import IntegratedServices from "./pages/IntegratedServices";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
@@ -20,8 +23,11 @@ export default function App() {
 
             {/* Others Page */}
             <Route path="/change-password" element={<RequireAuth><ChangePassword /></RequireAuth>} />
-            <Route path="/services" element={<RequireAuth><Services /></RequireAuth>} />
+            <Route path="/expert-services" element={<RequireAuth><ExpertServices /></RequireAuth>} />
             <Route path="/customers" element={<RequireAuth><Customers /></RequireAuth>} />
+            <Route path="/service-categories" element={<RequireAuth><ServiceCategories /></RequireAuth>} />
+            <Route path="/service-subcategories" element={<RequireAuth><ServiceSubcategories /></RequireAuth>} />
+            <Route path="/integrated-services" element={<RequireAuth><IntegratedServices /></RequireAuth>} />
 
           </Route>
 

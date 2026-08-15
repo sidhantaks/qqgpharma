@@ -1,547 +1,1919 @@
-import React, { Component } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { showLogoutNotice } from '../utils/logoutNotice';
 
-// Import Images
+// Images
 import bnrImg1 from "../../images/banner/img1.jpg";
 import waveBlue from "../../images/shap/wave-blue.png";
 import circleDots from "../../images/shap/circle-dots.png";
 import plusBlue from "../../images/shap/plus-blue.png";
+import { apiPath } from '../../config/api';
 
-class FormRegister extends Component {
-	constructor(props) {
-		super(props);
-		const now = new Date();
-		this.state = {
-			registrationNumber: this.generateRegNumber(now),
-			registrationDate: now.toISOString().slice(0, 10),
-			userCategory: '',
-			userCategoryOther: '',
-			// Partner-specific
-			partnerCategory: '',
-			partnerCategoryOther: '',
-			organizationDescription: '',
-			numberOfEmployees: '',
-			partnerExperience: '',
-			coreCompetencies: '',
-			majorClients: '',
-			partnerCertifications: '',
-			partnerCountriesServed: '',
-			supportingDocuments: [],
- 			title: 'Mr.',
-			fullName: '',
-			username: '',
-			password: '',
-			designation: '',
-			organization: '',
-			department: '',
-			experienceYears: '',
-			primaryMobile: '',
-			alternateMobile: '',
-			email: '',
-			website: '',
-			linkedin: '',
-			officeAddress: '',
-			city: '',
-			state: '',
-			country: '',
-			postalCode: '',
-			photograph: null,
-			professionalSummary: '',
-			areasOfExpertise: '',
-			keywords: '',
-			languagesKnown: '',
-			certifications: '',
-			education: '',
-			servicesRequired: [],
-			servicesOffered: [],
-			serviceOptions: [],
-			preferredWorkingMode: '',
-			countriesServed: '',
-			industriesServed: '',
-			availability: '',
-			consultationCharges: '',
-			errors: {}
-		};
-	}
+export default function CustomerDashboard() {
+  const navigate = useNavigate();
 
-	async componentDidMount() {
-		// Try to fetch services from backend admin API
-		try {
-			const res = await fetch('http://localhost:5000/api/services?limit=200');
-			const j = await res.json().catch(() => ({}));
-			if (res.ok && j && Array.isArray(j.data)) {
-				const opts = j.data.map(s => (s.serviceName || s.name || '').trim()).filter(Boolean);
-				this.setState({ serviceOptions: opts });
-			} else {
-				// fallback to defaults below
-			}
-		} catch (err) {
-			// ignore and keep defaults
-		}
-	}
+  const [profile, setProfile] = useState(null);
+  const [formState, setFormState] = useState({});
+  const [relatedServices, setRelatedServices] = useState([]);
 
-	generateRegNumber(date) {
-		const year = date.getFullYear();
-		const letters = Math.random().toString(36).substring(2, 4).toUpperCase();
-		const suffix = ('000' + Math.floor(Math.random() * 9999)).slice(-4);
-		return `QGPS/${year}/${letters}/${suffix}`;
-	}
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-	handleChange = (e) => {
-		const { name, value } = e.target;
-		this.setState(prev => ({ [name]: value, errors: { ...(prev.errors || {}), [name]: undefined } }));
-	}
+  const [editing, setEditing] = useState(false);
+  const [activeMenu, setActiveMenu] = useState('dashboard');
 
-	handleFileChange = (e) => {
-		const { name, files } = e.target;
-		if (name === 'photograph') {
-			this.setState({ photograph: files && files[0] });
-			return;
-		}
-		if (name === 'supportingDocuments') {
-			this.setState({ supportingDocuments: files ? Array.from(files) : [] });
-			return;
-		}
-		// fallback: if single file input with other name
-		this.setState({ [name]: files && files[0] });
-	}
+  const [fieldErrors, setFieldErrors] = useState({});
 
-	checkUsernameAvailability = async () => {
-		const name = (this.state.username || '').trim();
-		if (!name) return;
-		try {
-			const res = await fetch(`http://localhost:5000/api/registration/check-username?username=${encodeURIComponent(name)}`);
-			const json = await res.json().catch(()=>({}));
-			if (res.ok) {
-				if (!json.available) {
-					this.setState(prev=>({ errors: { ...(prev.errors||{}), username: 'Username already taken' } }));
-				} else {
-					this.setState(prev=>({ errors: { ...(prev.errors||{}), username: undefined } }));
-				}
-			}
-		} catch (err) {
-			// ignore
-		}
-	}
+  const [now, setNow] = useState(new Date());
 
-	handleCheckboxChange = (groupName, option) => {
-		const arr = new Set(this.state[groupName]);
-		if (arr.has(option)) arr.delete(option);
-		else arr.add(option);
-		this.setState({ [groupName]: Array.from(arr) });
-	}
+  /* =========================================================
+     LOAD CUSTOMER PROFILE
+  ========================================================= */
 
-	handleKeywordsChange = (e) => {
-		const value = e.target.value;
-		const parts = value.split(',').map(p => p.trim()).filter(Boolean);
-		if (parts.length <= 20) this.setState({ keywords: value });
-		else {
-			// keep first 20
-			this.setState({ keywords: parts.slice(0, 20).join(', ') });
-		}
-	}
+  useEffect(() => {
+    const token = localStorage.getItem('customer_token');
 
-	handleSubmit = (e) => {
-		e.preventDefault();
-		// Basic client-side validation example (inline errors)
-		const required = ['fullName', 'email', 'primaryMobile'];
-		const errors = {};
-		required.forEach(f => {
-			const val = this.state[f];
-			if (!val || (typeof val === 'string' && val.trim() === '')) errors[f] = 'Please fill this required field';
-		});
-		if (Object.keys(errors).length) {
-			this.setState({ errors });
-			// focus first invalid
-			const first = Object.keys(errors)[0];
-			const el = document.querySelector(`[name="${first}"]`);
-			if (el && typeof el.focus === 'function') el.focus();
-			return;
-		}
-		// Prepare form data for sending
-		const formData = new FormData();
-		Object.keys(this.state).forEach(key => {
-			const val = this.state[key];
-			if (val === null || val === undefined) return;
-			if (key === 'photograph' && val instanceof File) {
-				formData.append(key, val);
-				return;
-			}
-			if (key === 'supportingDocuments' && Array.isArray(val)) {
-				val.forEach((f) => {
-					if (f instanceof File) formData.append('supportingDocuments', f);
-				});
-				return;
-			}
-			if (Array.isArray(val)) {
-				formData.append(key, JSON.stringify(val));
-				return;
-			}
-			formData.append(key, val);
-		});
+    if (!token) {
+      navigate('/login');
+      return;
+    }
 
-		// Send to backend
-		fetch('http://localhost:5000/api/registration', {
-			method: 'POST',
-			body: formData
-		}).then(async res => {
-			const json = await res.json().catch(() => ({}));
-			if (!res.ok) {
-					console.error('Registration error', json);
-					// show inline error for username or other field if server provided 'field'
-					if (json && json.field) {
-						const field = json.field;
-						this.setState(prev => ({ errors: { ...(prev.errors || {}), [field]: json.error || 'Invalid value' } }));
-						const el = document.querySelector(`[name="${field}"]`);
-						if (el && typeof el.focus === 'function') el.focus();
-						return;
-					}
-					alert('Failed to submit registration: ' + (json.error || res.statusText));
-				return;
-			}
-			console.log('Registration saved', json);
-			this.setState({ errors: {} });
-				alert('Registration submitted successfully. Redirecting to login...');
-				// Redirect to login page
-				window.location.href = '/login';
-			// Optionally reset form or redirect
-		}).catch(err => {
-			console.error('Submit failed', err);
-			alert('Failed to submit registration: ' + err.message);
-		});
-	}
+    loadProfile(token);
+  }, [navigate]);
 
-	renderCheckboxGroup(groupName, options) {
-		return options.map(opt => (
-			<div className="form-check" key={opt}>
-				<input className="form-check-input" type="checkbox" id={`${groupName}_${opt}`} checked={this.state[groupName].includes(opt)} onChange={() => this.handleCheckboxChange(groupName, opt)} />
-				<label className="form-check-label" htmlFor={`${groupName}_${opt}`}>{opt}</label>
-			</div>
-		));
-	}
+  /* =========================================================
+     CLOCK
+  ========================================================= */
 
-		render() {
-			const defaultOptions = ['Consulting', 'Training', 'Audit', 'Implementation', 'Research'];
-			const serviceOptions = (this.state.serviceOptions && this.state.serviceOptions.length) ? this.state.serviceOptions : defaultOptions;
-		return (
-			<div className="page-content bg-white">
-				<div className="banner-wraper">
-					<div className="page-banner" style={{ backgroundImage: "url(" + bnrImg1 + ")" }}>
-						<div className="container">
-							<div className="page-banner-entry text-center">
-								<h1>Register</h1>
-								<nav aria-label="breadcrumb" className="breadcrumb-row">
-									<ul className="breadcrumb">
-										<li className="breadcrumb-item"><Link to="/">Home</Link></li>
-										<li className="breadcrumb-item active" aria-current="page">Register</li>
-									</ul>
-								</nav>
-							</div>
-						</div>
-						<img className="pt-img1 animate-wave" src={waveBlue} alt="" />
-						<img className="pt-img2 animate2" src={circleDots} alt="" />
-						<img className="pt-img3 animate-rotate" src={plusBlue} alt="" />
-					</div>
-				</div>
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
 
-				<div className="section-area account-wraper2">
-					<div className="container-fluid">
-						<div className="row justify-content-center">
-							<div className="col-12">
-								<div className="appointment-form form-wraper">
-									<div className="logo text-center mb-3">
-										<h1 className="text-primary">Customer Registration</h1>
-									</div>
-									<form onSubmit={this.handleSubmit}>
-										<div className="row">
-											<div className="col-md-4 form-group">
-												<label className="form-label">Registration Number</label>
-												<input type="text" name="registrationNumber" className="form-control" value={this.state.registrationNumber} readOnly />
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Registration Date</label>
-												<input type="date" name="registrationDate" className="form-control" value={this.state.registrationDate} onChange={this.handleChange} />
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">User Category</label>
-												<select name="userCategory" className="form-select" value={this.state.userCategory} onChange={this.handleChange}>
-													<option value="">Select category</option>
-													<option>Client</option>
-													<option>Partner</option>
-													<option>Consultant</option>
-													<option>Freelancer</option>
-													<option>Company</option>
-													<option>Manufacturer</option>
-													<option>Buyer</option>
-													<option>Seller</option>
-													<option>Trader</option>
-													<option>Investor</option>
-													<option>Entrepreneur</option>
-													<option>Advisor</option>
-													<option>Service Provider</option>
-													<option value="Other">Other (Please Specify)</option>
-												</select>
-												{this.state.userCategory === 'Other' && (
-													<div className="mt-2">
-														<input type="text" name="userCategoryOther" className="form-control" value={this.state.userCategoryOther} onChange={this.handleChange} placeholder="Please specify" />
-													</div>
-												)}
-											</div>
-											{this.state.userCategory === 'Partner' && (
-												<div className="col-12">
-													<div className="partner-profile mt-3">
-														<h5 className="mb-3">Partner Categories & Profile</h5>
-														<div className="row">
-															<div className="col-md-6 form-group">
-																<label className="form-label">Partner Category</label>
-																<select name="partnerCategory" className="form-select" value={this.state.partnerCategory} onChange={this.handleChange}>
-																	<option value="">Select</option>
-																	<option>Individual Consultant</option>
-																	<option>Freelancer</option>
-																	<option>Company</option>
-																	<option>Advisory Firm</option>
-																	<option>Manufacturing Partner</option>
-																	<option>Laboratory</option>
-																	<option>Software Provider</option>
-																	<option>Service Provider</option>
-																	<option>Training Organization</option>
-																	<option>Contract Research Organization (CRO)</option>
-																	<option>Contract Manufacturing Organization (CMO)</option>
-																	<option value="Other">Other</option>
-																</select>
-																{this.state.partnerCategory === 'Other' && (
-																	<input type="text" name="partnerCategoryOther" className="form-control mt-2" value={this.state.partnerCategoryOther} onChange={this.handleChange} placeholder="Please specify" />
-																)}
-															</div>
-															<div className="col-md-6 form-group">
-																<label className="form-label">Number of Employees</label>
-																<input type="number" name="numberOfEmployees" className="form-control" value={this.state.numberOfEmployees} onChange={this.handleChange} min="0" />
-															</div>
+    return () => clearInterval(timer);
+  }, []);
 
-															<div className="col-12 form-group">
-																<label className="form-label">Organization Description</label>
-																<textarea name="organizationDescription" className="form-control" rows="3" value={this.state.organizationDescription} onChange={this.handleChange} placeholder="Describe the organization"></textarea>
-															</div>
+  /* =========================================================
+     LOAD PROFILE
+  ========================================================= */
 
-															<div className="col-md-6 form-group">
-																<label className="form-label">Experience</label>
-																<input type="text" name="partnerExperience" className="form-control" value={this.state.partnerExperience} onChange={this.handleChange} placeholder="Years or summary" />
-															</div>
-															<div className="col-md-6 form-group">
-																<label className="form-label">Core Competencies</label>
-																<input type="text" name="coreCompetencies" className="form-control" value={this.state.coreCompetencies} onChange={this.handleChange} placeholder="Comma separated" />
-															</div>
+  const loadProfile = async (token) => {
+    try {
+      setLoading(true);
+      setError('');
 
-															<div className="col-md-6 form-group">
-																<label className="form-label">Major Clients</label>
-																<input type="text" name="majorClients" className="form-control" value={this.state.majorClients} onChange={this.handleChange} placeholder="Major clients / references" />
-															</div>
-															<div className="col-md-6 form-group">
-																<label className="form-label">Certifications</label>
-																<input type="text" name="partnerCertifications" className="form-control" value={this.state.partnerCertifications} onChange={this.handleChange} placeholder="Certifications" />
-															</div>
+      const response = await fetch(apiPath(`/customer/me`), {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json'
+        }
+      });
 
-															<div className="col-md-6 form-group">
-																<label className="form-label">Countries Served</label>
-																<input type="text" name="partnerCountriesServed" className="form-control" value={this.state.partnerCountriesServed} onChange={this.handleChange} placeholder="Comma separated countries" />
-															</div>
-															<div className="col-md-6 form-group">
-																<label className="form-label">Supporting Documents</label>
-																<input type="file" name="supportingDocuments" className="form-control" multiple onChange={this.handleFileChange} />
-															</div>
-														</div>
-													</div>
-												</div>
-											)}
+      const json = await response.json().catch(() => ({}));
 
-											<div className="col-md-4 form-group">
-												<label className="form-label">Title</label>
-												<select name="title" className="form-select" value={this.state.title} onChange={this.handleChange}>
-													<option>Mr.</option>
-													<option>Ms.</option>
-													<option>Mrs.</option>
-													<option>Dr.</option>
-													<option>Prof.</option>
-													<option>Sri</option>
-												</select>
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Full Name</label>
-												<input type="text" name="fullName" className={"form-control" + (this.state.errors && this.state.errors.fullName ? ' is-invalid' : '')} value={this.state.fullName} onChange={this.handleChange} placeholder="Full name" />
-												{this.state.errors && this.state.errors.fullName && (
-													<div className="invalid-feedback d-block">{this.state.errors.fullName}</div>
-												)}
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Username</label>
-												<input type="text" name="username" className={"form-control" + (this.state.errors && this.state.errors.username ? ' is-invalid' : '')} value={this.state.username || ''} onChange={this.handleChange} onBlur={this.checkUsernameAvailability} placeholder="Choose a username" />
-												{this.state.errors && this.state.errors.username && (
-													<div className="invalid-feedback d-block">{this.state.errors.username}</div>
-												)}
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Password</label>
-												<input type="password" name="password" className="form-control" value={this.state.password || ''} onChange={this.handleChange} placeholder="Password" />
-											</div>
+      if (!response.ok || !json.success) {
+        const message =
+          json.error ||
+          json.message ||
+          'Unable to load customer profile';
 
-											<div className="col-md-4 form-group">
-												<label className="form-label">Designation/Job Title</label>
-												<input type="text" name="designation" className="form-control" value={this.state.designation} onChange={this.handleChange} placeholder="Designation or Job Title" />
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Organization Name</label>
-												<input type="text" name="organization" className="form-control" value={this.state.organization} onChange={this.handleChange} placeholder="Company / Freelancer / Consultant / Other" />
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Department</label>
-												<input type="text" name="department" className="form-control" value={this.state.department} onChange={this.handleChange} placeholder="Department" />
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Years of Experience</label>
-												<input type="number" name="experienceYears" className="form-control" value={this.state.experienceYears} onChange={this.handleChange} placeholder="Years of experience" min="0" />
-											</div>
+        if (
+          message === 'Invalid token' ||
+          message.toLowerCase().includes('token')
+        ) {
+          localStorage.removeItem('customer_token');
+          localStorage.removeItem('customer_profile');
+          navigate('/login');
+          return;
+        }
 
-											<div className="col-md-4 form-group">
-												<label className="form-label">Primary Mobile Number</label>
-												<input type="tel" name="primaryMobile" className={"form-control" + (this.state.errors && this.state.errors.primaryMobile ? ' is-invalid' : '')} value={this.state.primaryMobile} onChange={this.handleChange} placeholder="Primary contact number" />
-												{this.state.errors && this.state.errors.primaryMobile && (
-													<div className="invalid-feedback d-block">{this.state.errors.primaryMobile}</div>
-												)}
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Alternate Mobile Number</label>
-												<input type="tel" name="alternateMobile" className="form-control" value={this.state.alternateMobile} onChange={this.handleChange} placeholder="Alternate contact number" />
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Email Address</label>
-												<input type="email" name="email" className={"form-control" + (this.state.errors && this.state.errors.email ? ' is-invalid' : '')} value={this.state.email} onChange={this.handleChange} placeholder="Email address" />
-												{this.state.errors && this.state.errors.email && (
-													<div className="invalid-feedback d-block">{this.state.errors.email}</div>
-												)}
-											</div>
+        throw new Error(message);
+      }
 
-											<div className="col-md-4 form-group">
-												<label className="form-label">Website</label>
-												<input type="url" name="website" className="form-control" value={this.state.website} onChange={this.handleChange} placeholder="https://example.com" />
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">LinkedIn Profile (Optional)</label>
-												<input type="url" name="linkedin" className="form-control" value={this.state.linkedin} onChange={this.handleChange} placeholder="LinkedIn profile URL" />
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Photograph</label>
-												<input type="file" name="photograph" className="form-control" accept="image/*" onChange={this.handleFileChange} />
-											</div>
+      const data = json.data;
 
-											<div className="col-12 form-group">
-												<label className="form-label">Office Address</label>
-												<textarea name="officeAddress" className="form-control" rows="2" value={this.state.officeAddress} onChange={this.handleChange} placeholder="Office address"></textarea>
-											</div>
+      setProfile(data);
 
-											<div className="col-md-3 form-group">
-												<label className="form-label">City</label>
-												<input type="text" name="city" className="form-control" value={this.state.city} onChange={this.handleChange} />
-											</div>
-											<div className="col-md-3 form-group">
-												<label className="form-label">State/Province</label>
-												<input type="text" name="state" className="form-control" value={this.state.state} onChange={this.handleChange} />
-											</div>
-											<div className="col-md-3 form-group">
-												<label className="form-label">Country</label>
-												<input type="text" name="country" className="form-control" value={this.state.country} onChange={this.handleChange} />
-											</div>
-											<div className="col-md-3 form-group">
-												<label className="form-label">Postal/ZIP Code</label>
-												<input type="text" name="postalCode" className="form-control" value={this.state.postalCode} onChange={this.handleChange} />
-											</div>
+      setFormState({
+        registrationNumber: data.registrationNumber || '',
+        registrationDate: data.registrationDate
+          ? String(data.registrationDate).slice(0, 10)
+          : '',
 
-											<div className="col-12 form-group">
-												<label className="form-label">Professional Summary</label>
-												<textarea name="professionalSummary" className="form-control" rows="4" value={this.state.professionalSummary} onChange={this.handleChange} placeholder="Brief professional summary"></textarea>
-											</div>
+        userCategory: data.userCategory || '',
 
-											<div className="col-md-6 form-group">
-												<label className="form-label">Areas of Expertise</label>
-												<textarea name="areasOfExpertise" className="form-control" rows="3" value={this.state.areasOfExpertise} onChange={this.handleChange} placeholder="Comma separated areas of expertise"></textarea>
-											</div>
-											<div className="col-md-6 form-group">
-												<label className="form-label">Keywords (max 20, comma separated)</label>
-												<input type="text" name="keywords" className="form-control" value={this.state.keywords} onChange={this.handleKeywordsChange} placeholder="keyword1, keyword2, ..." />
-											</div>
+        partnerCategory: data.partnerCategory || '',
+        partnerCategoryOther: data.partnerCategoryOther || '',
+        organizationDescription: data.organizationDescription || '',
+        numberOfEmployees: data.numberOfEmployees ?? '',
+        partnerExperience: data.partnerExperience || '',
+        coreCompetencies: data.coreCompetencies || '',
+        majorClients: data.majorClients || '',
+        partnerCertifications: data.partnerCertifications || '',
 
-											<div className="col-md-6 form-group">
-												<label className="form-label">Languages Known</label>
-												<input type="text" name="languagesKnown" className="form-control" value={this.state.languagesKnown} onChange={this.handleChange} placeholder="English, Hindi, ..." />
-											</div>
-											<div className="col-md-6 form-group">
-												<label className="form-label">Certifications</label>
-												<input type="text" name="certifications" className="form-control" value={this.state.certifications} onChange={this.handleChange} placeholder="Comma separated certifications" />
-											</div>
+        partnerCountriesServed: Array.isArray(
+          data.partnerCountriesServed
+        )
+          ? data.partnerCountriesServed.join(', ')
+          : data.partnerCountriesServed || '',
 
-											<div className="col-12 form-group">
-												<label className="form-label">Educational Qualifications</label>
-												<textarea name="education" className="form-control" rows="2" value={this.state.education} onChange={this.handleChange} placeholder="Degrees, institutions, years"></textarea>
-											</div>
+        title: data.title || 'Mr.',
+        username: data.username || '',
+        password: '',
+        confirmPassword: '',
 
-											<div className="col-md-6 form-group">
-												<label className="form-label">Services Required</label>
-												<div>
-													{this.renderCheckboxGroup('servicesRequired', serviceOptions)}
-												</div>
-											</div>
-											<div className="col-md-6 form-group">
-												<label className="form-label">Services Offered</label>
-												<div>
-													{this.renderCheckboxGroup('servicesOffered', serviceOptions)}
-												</div>
-											</div>
+        fullName: data.fullName || '',
+        organization: data.organization || '',
+        department: data.department || '',
 
-											<div className="col-md-4 form-group">
-												<label className="form-label">Preferred Working Mode</label>
-												<select name="preferredWorkingMode" className="form-select" value={this.state.preferredWorkingMode} onChange={this.handleChange}>
-													<option value="">Select</option>
-													<option>Remote</option>
-													<option>Onsite</option>
-													<option>Hybrid</option>
-												</select>
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Countries Served</label>
-												<input type="text" name="countriesServed" className="form-control" value={this.state.countriesServed} onChange={this.handleChange} placeholder="Comma separated countries" />
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Industries Served</label>
-												<input type="text" name="industriesServed" className="form-control" value={this.state.industriesServed} onChange={this.handleChange} placeholder="Comma separated industries" />
-											</div>
+        primaryMobile: data.primaryMobile || '',
+        alternateMobile: data.alternateMobile || '',
 
-											<div className="col-md-4 form-group">
-												<label className="form-label">Availability</label>
-												<select name="availability" className="form-select" value={this.state.availability} onChange={this.handleChange}>
-													<option value="">Select</option>
-													<option>Immediately Available</option>
-													<option>1-2 Weeks</option>
-													<option>1 Month</option>
-													<option>Specific Dates</option>
-												</select>
-											</div>
-											<div className="col-md-4 form-group">
-												<label className="form-label">Consultation Charges (Optional)</label>
-												<input type="text" name="consultationCharges" className="form-control" value={this.state.consultationCharges} onChange={this.handleChange} placeholder="e.g., USD 100/hr" />
-											</div>
+        email: data.email || '',
+        website: data.website || '',
 
-											<div className="col-12 form-group mt-3">
-												<button type="submit" className="btn btn-primary btn-lg">Register</button>
-											</div>
-										</div>
-									</form>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		);
-	}
+        officeAddress: data.officeAddress || '',
+        city: data.city || '',
+        state: data.state || '',
+        country: data.country || '',
+        postalCode: data.postalCode || ''
+      });
+
+      loadRelatedServices(data);
+
+    } catch (err) {
+      console.error('Profile loading error:', err);
+      setError(err.message || 'Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* =========================================================
+     RELATED SERVICES
+  ========================================================= */
+
+  const loadRelatedServices = async (currentProfile) => {
+    try {
+      const response = await fetch(apiPath(`/registration`));
+
+      const json = await response.json().catch(() => ({}));
+
+      if (!response.ok || !json.success) {
+        return;
+      }
+
+      const registrations = Array.isArray(json.data)
+        ? json.data
+        : [];
+
+      const currentId = currentProfile._id;
+
+      const others = registrations.filter((item) => {
+        if (item._id === currentId) {
+          return false;
+        }
+
+        if (
+          item.userCategory !== currentProfile.userCategory
+        ) {
+          return false;
+        }
+
+        if (
+          !item.servicesOffered ||
+          (
+            Array.isArray(item.servicesOffered) &&
+            item.servicesOffered.length === 0
+          )
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+
+      setRelatedServices(others);
+
+    } catch (err) {
+      console.error('Related services error:', err);
+    }
+  };
+
+  /* =========================================================
+     FORM CHANGE
+  ========================================================= */
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormState((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+
+    setFieldErrors((prev) => ({
+      ...prev,
+      [name]: undefined
+    }));
+
+    setError('');
+    setSuccess('');
+  };
+
+  /* =========================================================
+     USERNAME CHECK
+  ========================================================= */
+
+  const checkUsernameAvailability = async () => {
+    const username = (formState.username || '').trim();
+
+    if (!username || !profile) {
+      return;
+    }
+
+    if (username === profile.username) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        username: undefined
+      }));
+
+      return;
+    }
+
+    try {
+      const response = await fetch(apiPath(`/registration/check-username?username=${encodeURIComponent(username)}`));
+
+      const json = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        return;
+      }
+
+      if (!json.available) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          username: 'Username already exists'
+        }));
+      } else {
+        setFieldErrors((prev) => ({
+          ...prev,
+          username: undefined
+        }));
+      }
+
+    } catch (err) {
+      console.error('Username check error:', err);
+    }
+  };
+
+  /* =========================================================
+     EDIT
+  ========================================================= */
+
+  const handleEditToggle = () => {
+    if (editing) {
+      resetForm();
+    }
+
+    setEditing(!editing);
+  };
+
+  /* =========================================================
+     RESET FORM
+  ========================================================= */
+
+  const resetForm = () => {
+    if (!profile) return;
+
+    setFormState({
+      registrationNumber: profile.registrationNumber || '',
+      registrationDate: profile.registrationDate
+        ? String(profile.registrationDate).slice(0, 10)
+        : '',
+
+      userCategory: profile.userCategory || '',
+
+      partnerCategory: profile.partnerCategory || '',
+      partnerCategoryOther: profile.partnerCategoryOther || '',
+      organizationDescription:
+        profile.organizationDescription || '',
+      numberOfEmployees:
+        profile.numberOfEmployees ?? '',
+      partnerExperience:
+        profile.partnerExperience || '',
+      coreCompetencies:
+        profile.coreCompetencies || '',
+      majorClients:
+        profile.majorClients || '',
+      partnerCertifications:
+        profile.partnerCertifications || '',
+
+      partnerCountriesServed:
+        Array.isArray(profile.partnerCountriesServed)
+          ? profile.partnerCountriesServed.join(', ')
+          : profile.partnerCountriesServed || '',
+
+      title: profile.title || 'Mr.',
+      username: profile.username || '',
+      password: '',
+      confirmPassword: '',
+
+      fullName: profile.fullName || '',
+      organization: profile.organization || '',
+      department: profile.department || '',
+
+      primaryMobile: profile.primaryMobile || '',
+      alternateMobile: profile.alternateMobile || '',
+
+      email: profile.email || '',
+      website: profile.website || '',
+
+      officeAddress: profile.officeAddress || '',
+      city: profile.city || '',
+      state: profile.state || '',
+      country: profile.country || '',
+      postalCode: profile.postalCode || ''
+    });
+
+    setFieldErrors({});
+    setError('');
+    setSuccess('');
+  };
+
+  /* =========================================================
+     ARRAY CONVERSION
+  ========================================================= */
+
+  const toArray = (value) => {
+    if (!value && value !== 0) {
+      return [];
+    }
+
+    if (Array.isArray(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    return [value];
+  };
+
+  /* =========================================================
+     SAVE PROFILE
+  ========================================================= */
+
+  const handleSave = async () => {
+    const token = localStorage.getItem('customer_token');
+
+    if (!token || !profile?._id) {
+      setError('Unable to save profile. Authentication information is missing.');
+      return;
+    }
+
+    /* Password validation */
+
+    if (
+      formState.password &&
+      formState.password !== formState.confirmPassword
+    ) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        confirmPassword: 'Passwords do not match'
+      }));
+
+      return;
+    }
+
+    /* Username validation */
+
+    if (fieldErrors.username) {
+      setError('Please fix the username error before saving.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError('');
+      setSuccess('');
+
+      const payload = {
+        registrationNumber: formState.registrationNumber,
+        registrationDate: formState.registrationDate,
+
+        userCategory: formState.userCategory,
+
+        partnerCategory: formState.partnerCategory,
+        partnerCategoryOther:
+          formState.partnerCategoryOther,
+
+        organizationDescription:
+          formState.organizationDescription,
+
+        numberOfEmployees:
+          formState.numberOfEmployees,
+
+        partnerExperience:
+          formState.partnerExperience,
+
+        coreCompetencies:
+          formState.coreCompetencies,
+
+        majorClients:
+          formState.majorClients,
+
+        partnerCertifications:
+          formState.partnerCertifications,
+
+        partnerCountriesServed: toArray(
+          formState.partnerCountriesServed
+        ),
+
+        title: formState.title,
+        username: formState.username,
+
+        fullName: formState.fullName,
+        organization: formState.organization,
+        department: formState.department,
+
+        primaryMobile: formState.primaryMobile,
+        alternateMobile: formState.alternateMobile,
+
+        email: formState.email,
+        website: formState.website,
+
+        officeAddress: formState.officeAddress,
+        city: formState.city,
+        state: formState.state,
+        country: formState.country,
+        postalCode: formState.postalCode
+      };
+
+      /* Password only if entered */
+
+      if (
+        formState.password &&
+        formState.password.trim() !== ''
+      ) {
+        payload.password = formState.password;
+      }
+
+      const response = await fetch(
+        apiPath(`/registration/${profile._id}`),
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      const json = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (json.field) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            [json.field]:
+              json.error ||
+              json.message ||
+              'Invalid value'
+          }));
+        }
+
+        throw new Error(
+          json.error ||
+          json.message ||
+          'Failed to save profile'
+        );
+      }
+
+      setProfile(json.data);
+
+      setFormState((prev) => ({
+        ...prev,
+        password: '',
+        confirmPassword: ''
+      }));
+
+      setEditing(false);
+
+      setSuccess('Profile updated successfully.');
+
+      /* Save updated profile locally */
+
+      try {
+        localStorage.setItem(
+          'customer_profile',
+          JSON.stringify(json.data)
+        );
+
+        window.dispatchEvent(
+          new Event('customer_profile_updated')
+        );
+      } catch (err) {
+        console.error(err);
+      }
+
+    } catch (err) {
+      console.error('Save profile error:', err);
+      setError(err.message || 'Failed to save profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* =========================================================
+     LOGOUT
+  ========================================================= */
+
+  const logout = () => {
+    showLogoutNotice(() => {
+      localStorage.removeItem('customer_token');
+      localStorage.removeItem('customer_profile');
+
+      navigate('/');
+    });
+  };
+
+  /* =========================================================
+     FIELD COMPONENT
+  ========================================================= */
+
+  const Field = ({
+    label,
+    name,
+    type = 'text',
+    col = 'col-md-6',
+    placeholder = '',
+    readOnly = false
+  }) => {
+    const value = formState[name] || '';
+    const fieldError = fieldErrors[name];
+
+    return (
+      <div className={`${col} mb-3`}>
+        <label className="form-label fw-semibold">
+          {label}
+        </label>
+
+        {editing ? (
+          <>
+            <input
+              type={type}
+              name={name}
+              value={value}
+              readOnly={readOnly}
+              placeholder={placeholder}
+              onChange={handleFormChange}
+              onBlur={
+                name === 'username'
+                  ? checkUsernameAvailability
+                  : undefined
+              }
+              className={`form-control ${
+                fieldError ? 'is-invalid' : ''
+              }`}
+            />
+
+            {fieldError && (
+              <div className="invalid-feedback d-block">
+                {fieldError}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="profile-value">
+            {value || '—'}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /* =========================================================
+     TEXTAREA FIELD
+  ========================================================= */
+
+  const TextAreaField = ({
+    label,
+    name,
+    col = 'col-12'
+  }) => {
+    const value = formState[name] || '';
+
+    return (
+      <div className={`${col} mb-3`}>
+        <label className="form-label fw-semibold">
+          {label}
+        </label>
+
+        {editing ? (
+          <textarea
+            name={name}
+            value={value}
+            onChange={handleFormChange}
+            className="form-control"
+            rows="3"
+          />
+        ) : (
+          <div className="profile-value">
+            {value || '—'}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /* =========================================================
+     SELECT FIELD
+  ========================================================= */
+
+  const SelectField = ({
+    label,
+    name,
+    options,
+    col = 'col-md-6'
+  }) => {
+    const value = formState[name] || '';
+
+    return (
+      <div className={`${col} mb-3`}>
+        <label className="form-label fw-semibold">
+          {label}
+        </label>
+
+        {editing ? (
+          <select
+            name={name}
+            value={value}
+            onChange={handleFormChange}
+            className="form-select"
+          >
+            {options.map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+              >
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="profile-value">
+            {value || '—'}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /* =========================================================
+     LOADING
+  ========================================================= */
+
+  if (loading) {
+    return (
+      <div className="page-content bg-white">
+        <div className="container py-5">
+          <div className="text-center py-5">
+            <div
+              className="spinner-border text-primary"
+              style={{
+                width: '3rem',
+                height: '3rem'
+              }}
+            />
+
+            <h5 className="mt-3">
+              Loading your dashboard...
+            </h5>
+
+            <p className="text-muted">
+              Please wait
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
+  return (
+    <div className="page-content bg-light">
+
+      {/* =====================================================
+          BANNER
+      ===================================================== */}
+
+      <div className="banner-wraper">
+        <div
+          className="page-banner"
+          style={{
+            backgroundImage: `url(${bnrImg1})`
+          }}
+        >
+          <div className="container">
+            <div className="page-banner-entry text-center">
+
+              <h1>Customer Dashboard</h1>
+
+              <nav
+                aria-label="breadcrumb"
+                className="breadcrumb-row"
+              >
+                <ul className="breadcrumb justify-content-center">
+                  <li className="breadcrumb-item">
+                    <Link to="/">
+                      Home
+                    </Link>
+                  </li>
+
+                  <li
+                    className="breadcrumb-item active"
+                    aria-current="page"
+                  >
+                    Dashboard
+                  </li>
+                </ul>
+              </nav>
+
+            </div>
+          </div>
+
+          <img
+            className="pt-img1 animate-wave"
+            src={waveBlue}
+            alt=""
+          />
+
+          <img
+            className="pt-img2 animate2"
+            src={circleDots}
+            alt=""
+          />
+
+          <img
+            className="pt-img3 animate-rotate"
+            src={plusBlue}
+            alt=""
+          />
+        </div>
+      </div>
+
+      {/* =====================================================
+          DASHBOARD
+      ===================================================== */}
+
+      <div className="section-area py-5">
+
+        <div className="container">
+
+          {/* Alerts */}
+
+          {error && (
+            <div className="alert alert-danger shadow-sm">
+              <strong>Error:</strong> {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="alert alert-success shadow-sm">
+              <strong>Success:</strong> {success}
+            </div>
+          )}
+
+          <div className="row g-4">
+
+            {/* =================================================
+                SIDEBAR
+            ================================================= */}
+
+            <div className="col-lg-3">
+
+              <div
+                className="card border-0 shadow-sm"
+                style={{
+                  borderRadius: '15px',
+                  overflow: 'hidden'
+                }}
+              >
+
+                {/* Profile Header */}
+
+                <div
+                  className="p-4 text-center text-white"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #0d6efd, #084298)'
+                  }}
+                >
+
+                  <div
+                    className="mx-auto mb-3 d-flex align-items-center justify-content-center"
+                    style={{
+                      width: '75px',
+                      height: '75px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,.2)',
+                      fontSize: '30px',
+                      fontWeight: '700'
+                    }}
+                  >
+                    {profile?.fullName
+                      ? profile.fullName
+                          .charAt(0)
+                          .toUpperCase()
+                      : 'C'}
+                  </div>
+
+                  <h5 className="mb-1">
+                    {profile?.fullName ||
+                      profile?.username ||
+                      'Customer'}
+                  </h5>
+
+                  <small>
+                    {profile?.userCategory ||
+                      'Customer'}
+                  </small>
+
+                </div>
+
+                {/* Menu */}
+
+                <div className="list-group list-group-flush">
+
+                  <button
+                    type="button"
+                    className={`list-group-item list-group-item-action ${
+                      activeMenu === 'dashboard'
+                        ? 'active'
+                        : ''
+                    }`}
+                    onClick={() =>
+                      setActiveMenu('dashboard')
+                    }
+                  >
+                    <i className="fa fa-dashboard me-2" />
+                    Dashboard
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`list-group-item list-group-item-action ${
+                      activeMenu === 'profile'
+                        ? 'active'
+                        : ''
+                    }`}
+                    onClick={() =>
+                      setActiveMenu('profile')
+                    }
+                  >
+                    <i className="fa fa-user me-2" />
+                    Profile Details
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`list-group-item list-group-item-action ${
+                      activeMenu === 'services'
+                        ? 'active'
+                        : ''
+                    }`}
+                    onClick={() =>
+                      setActiveMenu('services')
+                    }
+                  >
+                    <i className="fa fa-briefcase me-2" />
+                    Services Offered
+                  </button>
+
+                  <button
+                    type="button"
+                    className="list-group-item list-group-item-action text-danger"
+                    onClick={logout}
+                  >
+                    <i className="fa fa-sign-out me-2" />
+                    Logout
+                  </button>
+
+                </div>
+              </div>
+
+            </div>
+
+            {/* =================================================
+                MAIN CONTENT
+            ================================================= */}
+
+            <div className="col-lg-9">
+
+              {/* =================================================
+                  DASHBOARD HOME
+              ================================================= */}
+
+              {activeMenu === 'dashboard' && (
+                <>
+
+                  <div
+                    className="card border-0 shadow-sm mb-4"
+                    style={{
+                      borderRadius: '15px',
+                      overflow: 'hidden'
+                    }}
+                  >
+
+                    <div
+                      className="p-4 text-white"
+                      style={{
+                        background:
+                          'linear-gradient(135deg, #0d6efd, #6610f2)'
+                      }}
+                    >
+
+                      <div className="row align-items-center">
+
+                        <div className="col-md-8">
+
+                          <h3 className="mb-2">
+                            Welcome,{' '}
+                            {profile?.fullName ||
+                              profile?.username}
+                            !
+                          </h3>
+
+                          <p className="mb-0 opacity-75">
+                            Welcome to your customer
+                            dashboard.
+                          </p>
+
+                        </div>
+
+                        <div className="col-md-4 text-md-end mt-3 mt-md-0">
+
+                          <div
+                            className="small"
+                            style={{
+                              opacity: '.85'
+                            }}
+                          >
+                            {now.toLocaleDateString(
+                              undefined,
+                              {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              }
+                            )}
+                          </div>
+
+                          <h5 className="mb-0">
+                            {now.toLocaleTimeString()}
+                          </h5>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  {/* Statistics */}
+
+                  <div className="row g-3 mb-4">
+
+                    <div className="col-md-4">
+
+                      <div className="card border-0 shadow-sm h-100">
+                        <div className="card-body">
+
+                          <div className="d-flex align-items-center">
+
+                            <div
+                              className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-3"
+                              style={{
+                                width: '50px',
+                                height: '50px'
+                              }}
+                            >
+                              <i className="fa fa-user" />
+                            </div>
+
+                            <div>
+                              <small className="text-muted">
+                                Category
+                              </small>
+
+                              <h6 className="mb-0">
+                                {profile?.userCategory ||
+                                  '—'}
+                              </h6>
+                            </div>
+
+                          </div>
+
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div className="col-md-4">
+
+                      <div className="card border-0 shadow-sm h-100">
+                        <div className="card-body">
+
+                          <div className="d-flex align-items-center">
+
+                            <div
+                              className="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center me-3"
+                              style={{
+                                width: '50px',
+                                height: '50px'
+                              }}
+                            >
+                              <i className="fa fa-building" />
+                            </div>
+
+                            <div>
+                              <small className="text-muted">
+                                Organization
+                              </small>
+
+                              <h6 className="mb-0">
+                                {profile?.organization ||
+                                  '—'}
+                              </h6>
+                            </div>
+
+                          </div>
+
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div className="col-md-4">
+
+                      <div className="card border-0 shadow-sm h-100">
+                        <div className="card-body">
+
+                          <div className="d-flex align-items-center">
+
+                            <div
+                              className="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center me-3"
+                              style={{
+                                width: '50px',
+                                height: '50px'
+                              }}
+                            >
+                              <i className="fa fa-phone" />
+                            </div>
+
+                            <div>
+                              <small className="text-muted">
+                                Contact
+                              </small>
+
+                              <h6 className="mb-0">
+                                {profile?.primaryMobile ||
+                                  '—'}
+                              </h6>
+                            </div>
+
+                          </div>
+
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  {/* Quick Profile */}
+
+                  <div className="card border-0 shadow-sm">
+
+                    <div className="card-body p-4">
+
+                      <div className="d-flex justify-content-between align-items-center mb-4">
+
+                        <div>
+                          <h5 className="mb-1">
+                            Profile Overview
+                          </h5>
+
+                          <small className="text-muted">
+                            Your registration information
+                          </small>
+                        </div>
+
+                        <button
+                          className="btn btn-primary"
+                          onClick={() =>
+                            setActiveMenu('profile')
+                          }
+                        >
+                          <i className="fa fa-user me-2" />
+                          View Profile
+                        </button>
+
+                      </div>
+
+                      <div className="row">
+
+                        <div className="col-md-6 mb-3">
+                          <small className="text-muted">
+                            Registration Number
+                          </small>
+
+                          <div className="fw-semibold">
+                            {profile?.registrationNumber ||
+                              '—'}
+                          </div>
+                        </div>
+
+                        <div className="col-md-6 mb-3">
+                          <small className="text-muted">
+                            Registration Date
+                          </small>
+
+                          <div className="fw-semibold">
+                            {profile?.registrationDate
+                              ? String(
+                                  profile.registrationDate
+                                ).slice(0, 10)
+                              : '—'}
+                          </div>
+                        </div>
+
+                        <div className="col-md-6 mb-3">
+                          <small className="text-muted">
+                            Email
+                          </small>
+
+                          <div className="fw-semibold">
+                            {profile?.email || '—'}
+                          </div>
+                        </div>
+
+                        <div className="col-md-6 mb-3">
+                          <small className="text-muted">
+                            Department
+                          </small>
+
+                          <div className="fw-semibold">
+                            {profile?.department || '—'}
+                          </div>
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </>
+              )}
+
+              {/* =================================================
+                  PROFILE
+              ================================================= */}
+
+              {activeMenu === 'profile' && profile && (
+                <div
+                  className="card border-0 shadow-sm"
+                  style={{
+                    borderRadius: '15px'
+                  }}
+                >
+
+                  {/* Header */}
+
+                  <div className="card-body p-4">
+
+                    <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+
+                      <div>
+
+                        <h4 className="mb-1">
+                          Profile Details
+                        </h4>
+
+                        <small className="text-muted">
+                          Information submitted during
+                          registration
+                        </small>
+
+                      </div>
+
+                      <div>
+
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary me-2"
+                          onClick={handleEditToggle}
+                        >
+                          <i
+                            className={`fa ${
+                              editing
+                                ? 'fa-times'
+                                : 'fa-edit'
+                            } me-2`}
+                          />
+
+                          {editing ? 'Cancel' : 'Edit'}
+                        </button>
+
+                        {editing && (
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={handleSave}
+                            disabled={saving}
+                          >
+                            {saving ? (
+                              <>
+                                <span
+                                  className="spinner-border spinner-border-sm me-2"
+                                />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <i className="fa fa-save me-2" />
+                                Save Changes
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                      </div>
+
+                    </div>
+
+                    {/* =================================================
+                        REGISTRATION
+                    ================================================= */}
+
+                    <div className="profile-section">
+
+                      <div className="section-heading">
+                        <i className="fa fa-id-card me-2" />
+                        Registration Information
+                      </div>
+
+                      <div className="row">
+
+                        <Field
+                          label="Registration Number"
+                          name="registrationNumber"
+                          col="col-md-6"
+                          readOnly
+                        />
+
+                        <Field
+                          label="Registration Date"
+                          name="registrationDate"
+                          type="date"
+                          col="col-md-6"
+                        />
+
+                        <SelectField
+                          label="Category"
+                          name="userCategory"
+                          col="col-md-6"
+                          options={[
+                            {
+                              value: '',
+                              label: 'Select category'
+                            },
+                            {
+                              value: 'Client',
+                              label: 'Client'
+                            },
+                            {
+                              value: 'Partner',
+                              label: 'Partner'
+                            },
+                            {
+                              value: 'Client / Partner',
+                              label: 'Client / Partner'
+                            }
+                          ]}
+                        />
+
+                        <SelectField
+                          label="Title"
+                          name="title"
+                          col="col-md-6"
+                          options={[
+                            {
+                              value: 'Mr.',
+                              label: 'Mr.'
+                            },
+                            {
+                              value: 'Ms.',
+                              label: 'Ms.'
+                            },
+                            {
+                              value: 'Mrs.',
+                              label: 'Mrs.'
+                            },
+                            {
+                              value: 'Dr.',
+                              label: 'Dr.'
+                            },
+                            {
+                              value: 'Prof.',
+                              label: 'Prof.'
+                            },
+                            {
+                              value: 'Sri',
+                              label: 'Sri'
+                            }
+                          ]}
+                        />
+
+                      </div>
+
+                    </div>
+
+                    {/* =================================================
+                        PARTNER
+                    ================================================= */}
+
+                    {(profile.userCategory === 'Partner' ||
+                      profile.userCategory ===
+                        'Client / Partner' ||
+                      formState.userCategory === 'Partner' ||
+                      formState.userCategory ===
+                        'Client / Partner') && (
+
+                      <div className="profile-section mt-4">
+
+                        <div className="section-heading">
+                          <i className="fa fa-briefcase me-2" />
+                          Partner Profile
+                        </div>
+
+                        <div className="row">
+
+                          <SelectField
+                            label="Partner Category"
+                            name="partnerCategory"
+                            col="col-md-6"
+                            options={[
+                              {
+                                value: '',
+                                label: 'Select'
+                              },
+                              {
+                                value:
+                                  'Individual Consultant',
+                                label:
+                                  'Individual Consultant'
+                              },
+                              {
+                                value: 'Freelancer',
+                                label: 'Freelancer'
+                              },
+                              {
+                                value: 'Company',
+                                label: 'Company'
+                              },
+                              {
+                                value: 'Advisory Firm',
+                                label: 'Advisory Firm'
+                              },
+                              {
+                                value:
+                                  'Manufacturing Partner',
+                                label:
+                                  'Manufacturing Partner'
+                              },
+                              {
+                                value: 'Laboratory',
+                                label: 'Laboratory'
+                              },
+                              {
+                                value:
+                                  'Software Provider',
+                                label:
+                                  'Software Provider'
+                              },
+                              {
+                                value:
+                                  'Service Provider',
+                                label:
+                                  'Service Provider'
+                              },
+                              {
+                                value:
+                                  'Training Organization',
+                                label:
+                                  'Training Organization'
+                              },
+                              {
+                                value:
+                                  'Contract Research Organization (CRO)',
+                                label:
+                                  'Contract Research Organization (CRO)'
+                              },
+                              {
+                                value:
+                                  'Contract Manufacturing Organization (CMO)',
+                                label:
+                                  'Contract Manufacturing Organization (CMO)'
+                              },
+                              {
+                                value: 'Other',
+                                label: 'Other'
+                              }
+                            ]}
+                          />
+
+                          {formState.partnerCategory ===
+                            'Other' && (
+                            <Field
+                              label="Other Partner Category"
+                              name="partnerCategoryOther"
+                              col="col-md-6"
+                            />
+                          )}
+
+                          <Field
+                            label="Number of Employees"
+                            name="numberOfEmployees"
+                            type="number"
+                            col="col-md-6"
+                          />
+
+                          <Field
+                            label="Experience"
+                            name="partnerExperience"
+                            col="col-md-6"
+                          />
+
+                          <TextAreaField
+                            label="Organization Description"
+                            name="organizationDescription"
+                          />
+
+                          <Field
+                            label="Core Competencies"
+                            name="coreCompetencies"
+                            col="col-md-6"
+                          />
+
+                          <Field
+                            label="Major Clients"
+                            name="majorClients"
+                            col="col-md-6"
+                          />
+
+                          <Field
+                            label="Partner Certifications"
+                            name="partnerCertifications"
+                            col="col-md-6"
+                          />
+
+                          <Field
+                            label="Countries Served"
+                            name="partnerCountriesServed"
+                            col="col-md-6"
+                          />
+
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* =================================================
+                        PERSONAL
+                    ================================================= */}
+
+                    <div className="profile-section mt-4">
+
+                      <div className="section-heading">
+                        <i className="fa fa-user me-2" />
+                        Personal Information
+                      </div>
+
+                      <div className="row">
+
+                        <Field
+                          label="Full Name"
+                          name="fullName"
+                          col="col-md-6"
+                        />
+
+                        <Field
+                          label="Username"
+                          name="username"
+                          col="col-md-6"
+                        />
+
+                        <Field
+                          label="Organization"
+                          name="organization"
+                          col="col-md-6"
+                        />
+
+                        <Field
+                          label="Department"
+                          name="department"
+                          col="col-md-6"
+                        />
+
+                      </div>
+
+                    </div>
+
+                    {/* =================================================
+                        CONTACT
+                    ================================================= */}
+
+                    <div className="profile-section mt-4">
+
+                      <div className="section-heading">
+                        <i className="fa fa-phone me-2" />
+                        Contact Information
+                      </div>
+
+                      <div className="row">
+
+                        <Field
+                          label="Primary Contact"
+                          name="primaryMobile"
+                          col="col-md-6"
+                        />
+
+                        <Field
+                          label="Alternate Contact"
+                          name="alternateMobile"
+                          col="col-md-6"
+                        />
+
+                        <Field
+                          label="Email"
+                          name="email"
+                          type="email"
+                          col="col-md-6"
+                        />
+
+                        <Field
+                          label="Website"
+                          name="website"
+                          type="url"
+                          col="col-md-6"
+                        />
+
+                      </div>
+
+                    </div>
+
+                    {/* =================================================
+                        ADDRESS
+                    ================================================= */}
+
+                    <div className="profile-section mt-4">
+
+                      <div className="section-heading">
+                        <i className="fa fa-map-marker me-2" />
+                        Address Information
+                      </div>
+
+                      <div className="row">
+
+                        <TextAreaField
+                          label="Office Address"
+                          name="officeAddress"
+                        />
+
+                        <Field
+                          label="City"
+                          name="city"
+                          col="col-md-3"
+                        />
+
+                        <Field
+                          label="State / Province"
+                          name="state"
+                          col="col-md-3"
+                        />
+
+                        <Field
+                          label="Country"
+                          name="country"
+                          col="col-md-3"
+                        />
+
+                        <Field
+                          label="Zonal / Pin Code"
+                          name="postalCode"
+                          col="col-md-3"
+                        />
+
+                      </div>
+
+                    </div>
+
+                    {/* =================================================
+                        PASSWORD
+                    ================================================= */}
+
+                    {editing && (
+                      <div className="profile-section mt-4">
+
+                        <div className="section-heading">
+                          <i className="fa fa-lock me-2" />
+                          Change Password
+                        </div>
+
+                        <div className="row">
+
+                          <Field
+                            label="New Password"
+                            name="password"
+                            type="password"
+                            col="col-md-6"
+                            placeholder="Leave blank to keep current password"
+                          />
+
+                          <Field
+                            label="Confirm Password"
+                            name="confirmPassword"
+                            type="password"
+                            col="col-md-6"
+                            placeholder="Confirm new password"
+                          />
+
+                        </div>
+
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              )}
+
+              {/* =================================================
+                  SERVICES
+              ================================================= */}
+
+              {activeMenu === 'services' && (
+                <div
+                  className="card border-0 shadow-sm"
+                  style={{
+                    borderRadius: '15px'
+                  }}
+                >
+
+                  <div className="card-body p-4">
+
+                    <div className="mb-4">
+
+                      <h4 className="mb-1">
+                        Services Offered
+                      </h4>
+
+                      <p className="text-muted mb-0">
+                        Services offered by other users
+                        in the same category.
+                      </p>
+
+                    </div>
+
+                    {relatedServices.length === 0 ? (
+                      <div
+                        className="text-center py-5"
+                      >
+
+                        <div
+                          className="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3"
+                          style={{
+                            width: '80px',
+                            height: '80px'
+                          }}
+                        >
+                          <i className="fa fa-briefcase fa-2x text-muted" />
+                        </div>
+
+                        <h5>
+                          No related services found
+                        </h5>
+
+                        <p className="text-muted">
+                          There are currently no other
+                          users offering services in
+                          your category.
+                        </p>
+
+                      </div>
+                    ) : (
+
+                      <div className="row">
+
+                        {relatedServices.map((item) => (
+
+                          <div
+                            className="col-md-6 mb-3"
+                            key={item._id}
+                          >
+
+                            <div
+                              className="card h-100 border shadow-sm"
+                              style={{
+                                borderRadius: '12px'
+                              }}
+                            >
+
+                              <div className="card-body">
+
+                                <div className="d-flex align-items-center mb-3">
+
+                                  <div
+                                    className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3"
+                                    style={{
+                                      width: '45px',
+                                      height: '45px'
+                                    }}
+                                  >
+                                    {item.fullName
+                                      ? item.fullName
+                                          .charAt(0)
+                                          .toUpperCase()
+                                      : 'U'}
+                                  </div>
+
+                                  <div>
+
+                                    <h6 className="mb-0">
+                                      {item.fullName ||
+                                        'User'}
+                                    </h6>
+
+                                    <small className="text-muted">
+                                      {item.organization ||
+                                        '—'}
+                                    </small>
+
+                                  </div>
+
+                                </div>
+
+                                <p className="mb-2">
+                                  <strong>
+                                    Services:
+                                  </strong>
+                                </p>
+
+                                <p className="text-muted">
+
+                                  {Array.isArray(
+                                    item.servicesOffered
+                                  )
+                                    ? item.servicesOffered.join(
+                                        ', '
+                                      )
+                                    : item.servicesOffered ||
+                                      '—'}
+
+                                </p>
+
+                                <hr />
+
+                                <small className="text-muted">
+                                  <i className="fa fa-phone me-1" />
+
+                                  {item.primaryMobile ||
+                                    item.email ||
+                                    'Contact unavailable'}
+                                </small>
+
+                              </div>
+
+                            </div>
+
+                          </div>
+
+                        ))}
+
+                      </div>
+
+                    )}
+
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =====================================================
+          PAGE STYLE
+      ===================================================== */}
+
+      <style>{`
+
+        .profile-section {
+          border: 1px solid #e9ecef;
+          border-radius: 12px;
+          padding: 20px;
+          background: #fff;
+        }
+
+        .section-heading {
+          font-size: 16px;
+          font-weight: 700;
+          color: #0d6efd;
+          border-bottom: 1px solid #e9ecef;
+          padding-bottom: 12px;
+          margin-bottom: 20px;
+        }
+
+        .profile-value {
+          min-height: 42px;
+          display: flex;
+          align-items: center;
+          padding: 10px 13px;
+          background: #f8f9fa;
+          border: 1px solid #e9ecef;
+          border-radius: 7px;
+          color: #343a40;
+          word-break: break-word;
+        }
+
+        .form-control,
+        .form-select {
+          min-height: 44px;
+          border-radius: 7px;
+          border-color: #dee2e6;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+          border-color: #0d6efd;
+          box-shadow: 0 0 0 .2rem rgba(13,110,253,.1);
+        }
+
+        textarea.form-control {
+          min-height: 100px;
+        }
+
+        .list-group-item {
+          border-left: 0;
+          border-right: 0;
+          padding: 13px 18px;
+          font-weight: 500;
+        }
+
+        .list-group-item.active {
+          background: #0d6efd;
+          border-color: #0d6efd;
+        }
+
+        .card {
+          transition: all .2s ease;
+        }
+
+        .card:hover {
+          transform: translateY(-1px);
+        }
+
+        @media (max-width: 767px) {
+
+          .profile-section {
+            padding: 15px;
+          }
+
+          .section-heading {
+            font-size: 15px;
+          }
+
+        }
+
+      `}</style>
+
+    </div>
+  );
 }
-
-export default FormRegister;
