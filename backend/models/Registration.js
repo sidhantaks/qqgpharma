@@ -18,7 +18,7 @@ const RegistrationSchema = new mongoose.Schema({
   coreCompetencies: { type: String },
   majorClients: { type: String },
   partnerCertifications: { type: String },
-  partnerCountriesServed: { type: String },
+  partnerCountriesServed: [{ type: String }],
   supportingDocuments: [{ type: String }],
 
   // Personal / common

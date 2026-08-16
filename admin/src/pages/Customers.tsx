@@ -120,8 +120,8 @@ export default function Customers() {
 
     for (const [k, v] of Object.entries(selected)) {
       if (!k) continue;
-      // hide internal or sensitive fields
-      if (['_id', 'title', 'fullName', 'username', 'password', 'createdAt', 'created_at', '__v', 'v'].includes(k)) continue;
+      // hide internal, sensitive or removed fields
+      if (['_id', 'title', 'fullName', 'username', 'password', 'createdAt', 'created_at', '__v', 'v', 'keywords', 'education', 'servicesRequired', 'servicesOffered', 'availability', 'consultationCharges'].includes(k)) continue;
       if (used.has(k)) continue;
       let label = LABEL_OVERRIDES[k] || formatLabel(k);
       // avoid duplicate labels

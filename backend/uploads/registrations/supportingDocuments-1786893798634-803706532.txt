@@ -1,0 +1,6 @@
+
+SSH username : root
+IPV4 : 200.141.13.27
+Root Access : ssh root@200.141.13.27
+Password: Lcj9XW@#188374
+Hostname 	: srv1881264.hstgr.cloud

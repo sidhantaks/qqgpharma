@@ -1,0 +1,75 @@
+.page-banner-entry h1 { font-weight:700; letter-spacing:0.2px; }
+.page-banner { box-shadow: inset 0 -40px 60px rgba(0,0,0,0.08); }
+
+/* Profile header */
+.profile-header { background: linear-gradient(90deg, #f8fbff, #ffffff); padding:12px 16px; border-radius:8px; }
+.profile-avatar { width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,#4f9ef8,#7be3c9); color:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:700; box-shadow:0 6px 18px rgba(79,158,248,0.18); }
+.profile-summary h5 { font-size:16px; margin-bottom:2px; }
+.profile-summary p a { color:#4f9ef8; text-decoration:underline; }
+
+/* Sidebar */
+.account-wraper2 .list-group-item { border:0; padding:12px 14px; color:#333; }
+.account-wraper2 .list-group-item.active { background:linear-gradient(90deg,#eef6ff,#f6fbff); color:#0b56d2; font-weight:600; border-radius:6px; }
+
+/* Cards */
+.card { border:0; border-radius:10px; box-shadow:0 6px 20px rgba(18,38,63,0.06); }
+.card .card-body { padding:18px; }
+
+/* Buttons */
+.btn-primary { background:#1976d2; border-color:#1976d2; }
+.btn-outline-primary { color:#1976d2; border-color:#dbeeff; }
+
+/* Tables */
+.table thead th { background:#fafcff; border-bottom:1px solid #eef4ff; }
+.table tbody tr td { vertical-align: middle; }
+
+/* Form inputs spacing */
+.form-label { font-weight:600; font-size:0.95rem; }
+
+/* Responsive tweaks */
+@media (max-width: 767px) {
+  .profile-header { flex-direction:row; gap:10px; }
+  .profile-avatar { width:56px; height:56px; }
+}
+
+/* Stat cards */
+.stat-card { background: linear-gradient(180deg, #ffffff, #fbfdff); border-radius:12px; border:1px solid rgba(125,170,255,0.08); box-shadow:0 8px 24px rgba(15,36,80,0.04); transition:transform .18s ease, box-shadow .18s ease; }
+.stat-card:hover { transform:translateY(-6px); box-shadow:0 18px 36px rgba(15,36,80,0.08); }
+.stat-title { font-size:0.9rem; color:#6b7c93; font-weight:600; }
+.stat-value { font-size:26px; font-weight:700; color:#0b56d2; margin-top:6px; }
+.stat-sub { font-size:0.85rem; color:#96a3b8; margin-top:4px; }
+
+/* Table rows subtle card look */
+.table-responsive .table tbody tr { background: linear-gradient(90deg,#ffffff,#fbfbff); border-radius:8px; margin-bottom:10px; display:table-row; }
+
+/* Small UI polish */
+.btn-primary:hover { transform: translateY(-1px); }
+.profile-header { border: 1px solid rgba(15,36,80,0.04); }
+.profile-summary p { font-size:0.9rem; }
+
+/* Form styling */
+.profile-edit-form .form-control, .opted-form .form-control { border-radius:8px; border:1px solid #e9f0ff; padding:10px 12px; }
+.profile-edit-form label, .opted-form label { font-weight:600; color:#2f4154; }
+.profile-edit-form textarea.form-control, .opted-form textarea.form-control { min-height:70px; }
+.profile-edit-form .form-label, .opted-form .form-label { font-weight:600; }
+.opted-form { background: linear-gradient(180deg,#ffffff,#fbfdff); border-radius:10px; border:1px solid rgba(110,146,255,0.06); }
+.opted-form .btn-primary { padding:8px 14px; }
+.profile-edit-form .card { padding:12px; }
+.profile-edit-form .form-control:focus, .opted-form .form-control:focus { border-color:#6ea8ff; box-shadow:0 10px 24px rgba(34,110,255,0.06); outline:0; }
+.field-help { font-size:0.85rem; color:#6f8191; }
+
+/* Color accents to match registration form */
+:root { --accent:#4f9ef8; --accent-2:#7be3c9; --muted:#6f8191; }
+.profile-edit-form .form-control, .opted-form .form-control { border-left:4px solid transparent; transition:box-shadow .12s ease, transform .08s ease; }
+.profile-edit-form .form-control:focus, .opted-form .form-control:focus { border-left-color:var(--accent-2); box-shadow:0 10px 24px rgba(79,158,248,0.08); transform:translateY(-1px); outline:0; }
+.form-section-title .chip { display:inline-block; width:10px; height:10px; border-radius:3px; background:linear-gradient(90deg,var(--accent),var(--accent-2)); box-shadow:0 6px 16px rgba(79,158,248,0.12); margin-right:8px; }
+
+/* add vibrant palette and helpers */
+:root { --accent:#ff6b6b; --accent-2:#845ef7; --accent-3:#00c2a8; --muted:#516074; }
+.profile-edit-form .form-control[data-variant="coral"] { background: linear-gradient(180deg,#fff7f6,#fff); }
+.profile-edit-form .form-control[data-variant="violet"] { background: linear-gradient(180deg,#f6f3ff,#fff); }
+.profile-edit-form .form-control[data-variant="teal"] { background: linear-gradient(180deg,#f1fffb,#fff); }
+.profile-edit-form .section-bg, .opted-form .section-bg { padding:8px 10px; border-radius:8px; margin-bottom:10px; }
+.profile-edit-form .section-bg.coral { background: linear-gradient(90deg,#fff2f0,#fff7f6); border:1px solid rgba(255,107,107,0.06); }
+.profile-edit-form .section-bg.violet { background: linear-gradient(90deg,#f6f3ff,#fbf9ff); border:1px solid rgba(132,94,247,0.06); }
+.profile-edit-form .section-bg.teal { background: linear-gradient(90deg,#f1fffb,#f8fffb); border:1px solid rgba(0,194,168,0.06); }

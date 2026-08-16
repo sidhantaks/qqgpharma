@@ -29,7 +29,6 @@ import BuyerSellers from './pages/buyer-sellers';
 import Safety from './pages/safety';
 import FormLogin from './pages/form-login';
 import FormRegister from './pages/form-register';
-import FormForgetPassword from './pages/form-forget-password';
 import CustomerDashboard from './pages/customer-dashboard';
 import Faq from './pages/faq';
 import ContactUs from './pages/contact-us';
@@ -75,7 +74,6 @@ class Markup extends Component{
 							<Route path="/login" element={<FormLogin />} />
 							<Route path="/form-register" element={<FormRegister />} />
 							<Route path="/customer/dashboard" element={<CustomerDashboard />} />
-							<Route path='/form-forget-password' element={<FormForgetPassword />} />
 							<Route path="*" element={<Error />} />
 						</Route>
 				

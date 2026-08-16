@@ -89,7 +89,7 @@ class aboutSection extends Component{
 
 													<path d="M32 42s-8-5.5-8-10a4 4 0 018-2 4 4 0 018 2c0 4.5-8 10-8 10z" fill="#EF4444"/>
 
-													<path d="M26 32l4 4 8-8" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+													<path d="M26 32l4 4 8-8" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
 													</svg>
 												</span> 
 											</div>

@@ -208,9 +208,6 @@ const Header = () => {
 								) : (
 									isMobileView && (
 										<>
-											<li className="btn-area d-flex align-items-center me-2">
-												<Link to="/customer/dashboard" className="btn btn-outline-primary">MY ACCOUNT</Link>
-											</li>
 											<li className="btn-area"><button onClick={() => { showLogoutNotice(() => { setIsCustomerLoggedIn(false); window.location.href = '/'; }); }} className="btn btn-secondary">LOGOUT</button></li>
 										</>
 									)
@@ -228,19 +225,28 @@ const Header = () => {
 									<React.Fragment key={item.id}>
 										<li
 											className={`${activeItem === item.id ? 'open' : ''}`}
-											onClick={() => !isMobileView && toggleSubmenu(item.id)}
+											onClick={() => isMobileView && toggleSubmenu(item.id)}
 										>
 											{item.subItems ? (
-												<Link to={`/${item.linkName}`} onClick={handleMenuLinkClick}>
+												<Link to={`/${item.linkName}`} onClick={(e)=>{
+													if (isMobileView) { e.preventDefault(); e.stopPropagation(); toggleSubmenu(item.id); } else { handleMenuLinkClick(); }
+												}}>
 													{item.name}
-													<i className={`fas fa-plus`}></i>
+													<i
+														className={`submenu-icon fas ${activeItem === item.id ? 'fa-minus' : 'fa-plus'}`}
+														aria-hidden="true"
+														onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); toggleSubmenu(item.id); }}
+														onKeyDown={(e)=>{ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleSubmenu(item.id); } }}
+														role="button"
+														tabIndex={0}
+													/>
 												</Link>
 											) : (
 												<Link to={`/${item.linkName}`} onClick={handleMenuLinkClick}>
 													{item.name}
 												</Link>
 											)}
-											{(isMobileView || activeItem === item.id) && item.subItems && (
+											{item.subItems && (
 												<ul className={`sub-menu ${item.id === 'services' ? 'two-col' : ''}`}>
 													{item.subItems.map((subItem, index) => (
 														<li key={subItem.id}><Link to={`/${subItem.linkName}`} onClick={handleMenuLinkClick}><span>{subItem.displayName}</span></Link></li>
@@ -249,19 +255,23 @@ const Header = () => {
 											)}
 										</li>
 										{item.id === 'contactUs' && isCustomerLoggedIn && !isMobileView && (
-											<>
-												<li>
-													<Link to="/customer/dashboard" onClick={handleMenuLinkClick} className="d-flex align-items-center">
-														<span>MY ACCOUNT</span>
-													</Link>
-												</li>
-												<li>
-													<button onClick={() => { showLogoutNotice(() => { setIsCustomerLoggedIn(false); window.location.href = '/'; }); }} className="nav-link" style={{ color: "#fff" }}>LOGOUT</button>
-												</li>
-											</>
+											<li className="d-flex align-items-center">
+												<Link to="/customer/dashboard" onClick={handleMenuLinkClick} className="me-3">
+													MY ACCOUNT
+												</Link>
+												<button onClick={() => { showLogoutNotice(() => { setIsCustomerLoggedIn(false); window.location.href = '/'; }); }} className="btn btn-sm" style={{ backgroundColor: '#f17732', color: '#fff', border: 'none' }}>LOGOUT</button>
+											</li>
 										)}
 										{item.id === 'contactUs' && !isCustomerLoggedIn && isMobileView && (
 											<li><Link to="/login" onClick={handleMenuLinkClick}>LOGIN</Link></li>
+										)}
+										{item.id === 'contactUs' && isCustomerLoggedIn && isMobileView && (
+											<>
+												<li><Link to="/customer/dashboard" onClick={handleMenuLinkClick}>MY ACCOUNT</Link></li>
+												<li>
+													<a href="#" onClick={(e) => { e.preventDefault(); showLogoutNotice(() => { setIsCustomerLoggedIn(false); window.location.href = '/'; }); }} className="nav-link">LOGOUT</a>
+												</li>
+											</>
 										)}
 										
 									</React.Fragment>

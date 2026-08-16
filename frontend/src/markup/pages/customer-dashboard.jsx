@@ -8,6 +8,7 @@ import bnrImg1 from "../../images/banner/img1.jpg";
 import waveBlue from "../../images/shap/wave-blue.png";
 import circleDots from "../../images/shap/circle-dots.png";
 import plusBlue from "../../images/shap/plus-blue.png";
+import './customer-dashboard.css';
 
 export default function CustomerDashboard(){
   const [profile, setProfile] = useState(null);
@@ -17,10 +18,18 @@ export default function CustomerDashboard(){
   const [editing, setEditing] = useState(false);
   const [formState, setFormState] = useState({});
   const [relatedServices, setRelatedServices] = useState([]);
+  const [optedServices, setOptedServices] = useState([]);
+  const [expertServices, setExpertServices] = useState([]);
+  const [serviceCategories, setServiceCategories] = useState([]);
+  const [serviceSubcategories, setServiceSubcategories] = useState([]);
+  const [integratedServicesList, setIntegratedServicesList] = useState([]);
+  const [optForm, setOptForm] = useState({ expertServiceId: '', categoryId: '', subcategoryId: '', integratedServiceId: '', notes: '' });
   const [saving, setSaving] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(true);
+  const [editingOptId, setEditingOptId] = useState(null);
+  const [editOptForm, setEditOptForm] = useState({ expertServiceId: '', categoryId: '', subcategoryId: '', integratedServiceId: '', notes: '' });
   const [fieldErrors, setFieldErrors] = useState({});
   const navigate = useNavigate();
-
   const [now, setNow] = useState(new Date());
 
   useEffect(()=>{
@@ -63,27 +72,14 @@ export default function CustomerDashboard(){
           state: j.data.state || '',
           country: j.data.country || '',
           postalCode: j.data.postalCode || '',
-          professionalSummary: j.data.professionalSummary || '',
-          areasOfExpertise: Array.isArray(j.data.areasOfExpertise) ? j.data.areasOfExpertise.join(', ') : (j.data.areasOfExpertise || ''),
-          keywords: Array.isArray(j.data.keywords) ? j.data.keywords.join(', ') : (j.data.keywords || ''),
-          languagesKnown: j.data.languagesKnown || '',
-          certifications: Array.isArray(j.data.certifications) ? j.data.certifications.join(', ') : (j.data.certifications || ''),
-          education: j.data.education || '',
-          servicesRequired: Array.isArray(j.data.servicesRequired) ? j.data.servicesRequired.join(', ') : (j.data.servicesRequired || ''),
-          servicesOffered: Array.isArray(j.data.servicesOffered) ? j.data.servicesOffered.join(', ') : (j.data.servicesOffered || ''),
-          preferredWorkingMode: j.data.preferredWorkingMode || '',
-          countriesServed: j.data.countriesServed || '',
-          industriesServed: j.data.industriesServed || '',
-          availability: j.data.availability || '',
-          consultationCharges: j.data.consultationCharges || '',
-          officeAddress: j.data.officeAddress || '',
+          // removed: education, availability, consultationCharges
         });
         // Fetch other registrations to show related services
         try {
           const regsRes = await fetch(apiPath(`/registration`));
           const regsJson = await regsRes.json().catch(()=>({}));
           if (regsRes.ok && regsJson.success) {
-            const others = regsJson.data.filter(r => r._id !== j.data._id && r.userCategory === j.data.userCategory && Array.isArray(r.servicesOffered) && r.servicesOffered.length);
+            const others = regsJson.data.filter(r => r._id !== j.data._id && r.userCategory === j.data.userCategory);
             setRelatedServices(others);
           }
         } catch (e) {
@@ -111,6 +107,129 @@ export default function CustomerDashboard(){
     setFormState(prev => ({ ...prev, [name]: value }));
     setFieldErrors(prev => ({ ...(prev||{}), [name]: undefined }));
   }
+
+  const handleOptChange = (e) => {
+    const { name, value } = e.target;
+    setOptForm(prev => ({ ...prev, [name]: value }));
+  }
+
+  // Fetch options & opted services when opted menu active
+  useEffect(() => {
+    if (activeMenu !== 'opted') return;
+    const token = localStorage.getItem('customer_token');
+    // fetch opted services for customer
+    (async () => {
+      try {
+        const res = await fetch(apiPath('/opted-services'), { headers: { Authorization: token ? 'Bearer '+token : '' } });
+        const j = await res.json().catch(()=>({}));
+        if (res.ok && j.success) {
+          setOptedServices(j.data || []);
+          // if there are any opted services, hide the add form by default
+          setShowAddForm((j.data || []).length === 0);
+        }
+      } catch (e) {}
+      try {
+        const es = await fetch(apiPath('/expert-services'));
+        const jes = await es.json().catch(()=>({})); if (es.ok && jes.success) setExpertServices(jes.data || []);
+      } catch (e) {}
+      try {
+        const sc = await fetch(apiPath('/service-categories'));
+        const jsc = await sc.json().catch(()=>({})); if (sc.ok && jsc.success) setServiceCategories(jsc.data || []);
+      } catch (e) {}
+      try {
+        const ssc = await fetch(apiPath('/service-subcategories'));
+        const jssc = await ssc.json().catch(()=>({})); if (ssc.ok && jssc.success) setServiceSubcategories(jssc.data || []);
+      } catch (e) {}
+      try {
+        const isv = await fetch(apiPath('/integrated-services'));
+        const jisv = await isv.json().catch(()=>({})); if (isv.ok && jisv.success) setIntegratedServicesList(jisv.data || []);
+      } catch (e) {}
+    })();
+  }, [activeMenu]);
+
+  const submitOpted = async () => {
+    const token = localStorage.getItem('customer_token');
+    if (!token) { alert('Please login'); return; }
+    if (!optForm.categoryId) { alert('Please select a category'); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(apiPath('/opted-services'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '+token },
+        body: JSON.stringify(optForm)
+      });
+      const j = await res.json().catch(()=>({}));
+      console.log('opted-services POST', res.status, j);
+      if (res.status === 401) {
+        setSaving(false);
+        localStorage.removeItem('customer_token');
+        navigate('/login');
+        return;
+      }
+      if (!res.ok) { setSaving(false); alert(j.error || j.message || 'Failed'); return; }
+      alert('Saved');
+      // refresh list
+      const listRes = await fetch(apiPath('/opted-services'), { headers: { Authorization: 'Bearer '+token } });
+      const lj = await listRes.json().catch(()=>({})); if (listRes.ok && lj.success) setOptedServices(lj.data || []);
+      // reset form
+      setOptForm({ expertServiceId: '', categoryId: '', subcategoryId: '', integratedServiceId: '', notes: '' });
+      // hide add form and show list
+      setShowAddForm(false);
+    } catch (e) { alert(e.message || 'Error'); }
+    setSaving(false);
+  }
+
+  const handleEditClick = (opt) => {
+    setEditingOptId(opt._id);
+    setEditOptForm({
+      expertServiceId: opt.expertService ? (opt.expertService._id || opt.expertService) : '',
+      categoryId: opt.category ? (opt.category._id || opt.category) : '',
+      subcategoryId: opt.subcategory ? (opt.subcategory._id || opt.subcategory) : '',
+      integratedServiceId: opt.integratedService ? (opt.integratedService._id || opt.integratedService) : '',
+      notes: opt.notes || ''
+    });
+    // show edit form in place of add form
+    setShowAddForm(true);
+  }
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditOptForm(prev => ({ ...prev, [name]: value }));
+  }
+
+  const saveEdit = async () => {
+    if (!editingOptId) return;
+    const token = localStorage.getItem('customer_token');
+    if (!token) { alert('Please login'); return; }
+    setSaving(true);
+    try {
+      // delete existing opted service then create new with edited values
+      const del = await fetch(apiPath(`/opted-services/${editingOptId}`), { method: 'DELETE', headers: { Authorization: 'Bearer '+token } });
+      if (!del.ok) { const dj = await del.json().catch(()=>({})); alert(dj.error || 'Failed to delete before update'); setSaving(false); return; }
+      const res = await fetch(apiPath('/opted-services'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '+token },
+        body: JSON.stringify(editOptForm)
+      });
+      const j = await res.json().catch(()=>({}));
+      if (!res.ok) { alert(j.error || j.message || 'Failed to save'); setSaving(false); return; }
+      // refresh list
+      const listRes = await fetch(apiPath('/opted-services'), { headers: { Authorization: 'Bearer '+token } });
+      const lj = await listRes.json().catch(()=>({})); if (listRes.ok && lj.success) setOptedServices(lj.data || []);
+      setEditingOptId(null);
+      setShowAddForm(false);
+      setEditOptForm({ expertServiceId: '', categoryId: '', subcategoryId: '', integratedServiceId: '', notes: '' });
+    } catch (e) { alert(e.message || 'Error'); }
+    setSaving(false);
+  }
+
+  const cancelEdit = () => {
+    setEditingOptId(null);
+    setEditOptForm({ expertServiceId: '', categoryId: '', subcategoryId: '', integratedServiceId: '', notes: '' });
+    setShowAddForm(false);
+  }
+
+  // deletion not supported from UI
 
   const checkUsernameAvailability = async () => {
     const name = (formState.username || '').trim();
@@ -152,10 +271,8 @@ export default function CustomerDashboard(){
       return [v];
     };
     const payload = { ...formState };
-    // normalize commonly-array fields
-    ['partnerCountriesServed','areasOfExpertise','keywords','certifications','servicesRequired','servicesOffered','countriesServed','industriesServed'].forEach(k=>{
-      if (payload[k] !== undefined) payload[k] = toArray(payload[k]);
-    });
+    // normalize partner countries (comma separated) to array
+    ['partnerCountriesServed'].forEach(k=>{ if (payload[k] !== undefined) payload[k] = toArray(payload[k]); });
     // remove confirmPassword helper
     delete payload.confirmPassword;
     // if password empty, remove it so backend doesn't change
@@ -187,6 +304,8 @@ export default function CustomerDashboard(){
       alert('Profile saved');
     }).catch(err => setError(err.message)).finally(()=>setSaving(false));
   }
+
+  const profileCompleteness = profile ? Math.round((['fullName','email','primaryMobile','organization'].filter(f => profile[f]).length / 4) * 100) : 0;
 
   return (
     <div className="page-content">
@@ -220,8 +339,9 @@ export default function CustomerDashboard(){
                     <ul className="list-group list-group-flush">
                       <li className={`list-group-item ${activeMenu==='dashboard' ? 'active' : ''}`} style={{cursor:'pointer'}} onClick={()=>setActiveMenu('dashboard')}>Dashboard</li>
                       <li className={`list-group-item ${activeMenu==='profile' ? 'active' : ''}`} style={{cursor:'pointer'}} onClick={()=>setActiveMenu('profile')}>Profile Details</li>
+                      <li className={`list-group-item ${activeMenu==='opted' ? 'active' : ''}`} style={{cursor:'pointer'}} onClick={()=>setActiveMenu('opted')}>Opted Services</li>
+                      <li className={`list-group-item ${activeMenu==='services' ? 'active' : ''}`} style={{cursor:'pointer'}} onClick={()=>setActiveMenu('services')}>Service Providers</li>
                       <li className={`list-group-item ${activeMenu==='logout' ? 'active' : ''}`} style={{cursor:'pointer'}} onClick={()=>{ setActiveMenu('logout'); logout(); }}>Logout</li>
-                      <li className={`list-group-item ${activeMenu==='services' ? 'active' : ''}`} style={{cursor:'pointer'}} onClick={()=>setActiveMenu('services')}>Services Offered (Peers)</li>
                     </ul>
                 </div>
               </div>
@@ -241,12 +361,49 @@ export default function CustomerDashboard(){
                     </div>
                   </div>
 
+                  {!loading && profile && (
+                    <div className="profile-header d-flex align-items-center mb-3">
+                      <div className="profile-avatar me-3">{(profile.fullName || profile.username || 'U').charAt(0).toUpperCase()}</div>
+                      <div className="profile-summary">
+                        <h5 className="mb-0">{profile.fullName || profile.username}</h5>
+                        <p className="mb-0 text-muted">
+                          {profile.organization ? <>{profile.organization} &nbsp;•&nbsp;</> : null}
+                          {profile.website ? <a href={profile.website} target="_blank" rel="noreferrer">Visit Website</a> : 'No website'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {loading && <div>Loading...</div>}
                   {error && <div className="text-danger">{error}</div>}
 
                   {!loading && activeMenu === 'dashboard' && (
                     <div className="mb-3">
-                      <div className="card p-3 mb-3">
+                      <div className="row g-3">
+                        <div className="col-md-4">
+                          <div className="stat-card p-3">
+                            <div className="stat-title">Profile</div>
+                            <div className="stat-value">{profileCompleteness}%</div>
+                            <div className="stat-sub">Profile completeness</div>
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="stat-card p-3">
+                            <div className="stat-title">Opted Services</div>
+                            <div className="stat-value">{optedServices.length}</div>
+                            <div className="stat-sub">Services you've opted into</div>
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="stat-card p-3">
+                            <div className="stat-title">Related</div>
+                            <div className="stat-value">{relatedServices.length}</div>
+                            <div className="stat-sub">Related services nearby</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="card p-3 mt-3">
                         <h5 className="mb-1">Welcome, {profile ? (profile.fullName || profile.username) : 'Customer'}</h5>
                         <p className="mb-0">Today is {now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} — {now.toLocaleTimeString()}</p>
                       </div>
@@ -254,7 +411,7 @@ export default function CustomerDashboard(){
                   )}
 
                   {!loading && activeMenu === 'profile' && profile && (
-                    <div>
+                    <div className="profile-edit-form">
                       <h5>Profile</h5>
                       <div className="row">
                         <div className="col-md-4">
@@ -284,6 +441,10 @@ export default function CustomerDashboard(){
                           {editing ? <input name="email" value={formState.email} onChange={handleFormChange} className="form-control" /> : <p>{profile.email}</p>}
                         </div>
                         <div className="col-md-6 mt-3">
+                          <label className="form-label">Website</label>
+                          {editing ? <input name="website" value={formState.website} onChange={handleFormChange} className="form-control" /> : <p>{profile.website || '—'}</p>}
+                        </div>
+                        <div className="col-md-6 mt-3">
                           <label className="form-label">Primary Mobile</label>
                           {editing ? <input name="primaryMobile" value={formState.primaryMobile} onChange={handleFormChange} className="form-control" /> : <p>{profile.primaryMobile}</p>}
                         </div>
@@ -296,20 +457,11 @@ export default function CustomerDashboard(){
                           <label className="form-label">Organization</label>
                           {editing ? <input name="organization" value={formState.organization} onChange={handleFormChange} className="form-control" /> : <p>{profile.organization}</p>}
                         </div>
-
-                        <div className="col-md-6 mt-3">
-                          <label className="form-label">Designation</label>
-                          {editing ? <input name="designation" value={formState.designation} onChange={handleFormChange} className="form-control" /> : <p>{profile.designation}</p>}
-                        </div>
                         <div className="col-md-6 mt-3">
                           <label className="form-label">Department</label>
                           {editing ? <input name="department" value={formState.department} onChange={handleFormChange} className="form-control" /> : <p>{profile.department}</p>}
                         </div>
 
-                        <div className="col-md-6 mt-3">
-                          <label className="form-label">Experience Years</label>
-                          {editing ? <input type="number" name="experienceYears" value={formState.experienceYears} onChange={handleFormChange} className="form-control" /> : <p>{profile.experienceYears}</p>}
-                        </div>
                         <div className="col-md-6 mt-3">
                           <label className="form-label">Username</label>
                           {editing ? (
@@ -351,65 +503,6 @@ export default function CustomerDashboard(){
                         <div className="col-md-3 mt-3">
                           <label className="form-label">Postal Code</label>
                           {editing ? <input name="postalCode" value={formState.postalCode} onChange={handleFormChange} className="form-control" /> : <p>{profile.postalCode}</p>}
-                        </div>
-
-                        <div className="col-12 mt-3">
-                          <label className="form-label">Professional Summary</label>
-                          {editing ? <textarea name="professionalSummary" value={formState.professionalSummary} onChange={handleFormChange} className="form-control" rows={3} /> : <p>{profile.professionalSummary}</p>}
-                        </div>
-
-                        <div className="col-md-6 mt-3">
-                          <label className="form-label">Areas Of Expertise</label>
-                          {editing ? <input name="areasOfExpertise" value={formState.areasOfExpertise} onChange={handleFormChange} className="form-control" placeholder="comma separated" /> : <p>{Array.isArray(profile.areasOfExpertise) ? profile.areasOfExpertise.join(', ') : profile.areasOfExpertise}</p>}
-                        </div>
-                        <div className="col-md-6 mt-3">
-                          <label className="form-label">Keywords</label>
-                          {editing ? <input name="keywords" value={formState.keywords} onChange={handleFormChange} className="form-control" placeholder="comma separated" /> : <p>{Array.isArray(profile.keywords) ? profile.keywords.join(', ') : profile.keywords}</p>}
-                        </div>
-
-                        <div className="col-md-6 mt-3">
-                          <label className="form-label">Languages Known</label>
-                          {editing ? <input name="languagesKnown" value={formState.languagesKnown} onChange={handleFormChange} className="form-control" /> : <p>{profile.languagesKnown}</p>}
-                        </div>
-                        <div className="col-md-6 mt-3">
-                          <label className="form-label">Certifications</label>
-                          {editing ? <input name="certifications" value={formState.certifications} onChange={handleFormChange} className="form-control" placeholder="comma separated" /> : <p>{Array.isArray(profile.certifications) ? profile.certifications.join(', ') : profile.certifications}</p>}
-                        </div>
-
-                        <div className="col-12 mt-3">
-                          <label className="form-label">Education</label>
-                          {editing ? <textarea name="education" value={formState.education} onChange={handleFormChange} className="form-control" rows={2} /> : <p>{profile.education}</p>}
-                        </div>
-
-                        <div className="col-md-6 mt-3">
-                          <label className="form-label">Services Required</label>
-                          {editing ? <input name="servicesRequired" value={formState.servicesRequired} onChange={handleFormChange} className="form-control" placeholder="comma separated" /> : <p>{Array.isArray(profile.servicesRequired) ? profile.servicesRequired.join(', ') : profile.servicesRequired}</p>}
-                        </div>
-                        <div className="col-md-6 mt-3">
-                          <label className="form-label">Services Offered</label>
-                          {editing ? <input name="servicesOffered" value={formState.servicesOffered} onChange={handleFormChange} className="form-control" placeholder="comma separated" /> : <p>{Array.isArray(profile.servicesOffered) ? profile.servicesOffered.join(', ') : profile.servicesOffered}</p>}
-                        </div>
-
-                        <div className="col-md-4 mt-3">
-                          <label className="form-label">Preferred Working Mode</label>
-                          {editing ? <input name="preferredWorkingMode" value={formState.preferredWorkingMode} onChange={handleFormChange} className="form-control" /> : <p>{profile.preferredWorkingMode}</p>}
-                        </div>
-                        <div className="col-md-4 mt-3">
-                          <label className="form-label">Countries Served</label>
-                          {editing ? <input name="countriesServed" value={formState.countriesServed} onChange={handleFormChange} className="form-control" placeholder="comma separated" /> : <p>{profile.countriesServed}</p>}
-                        </div>
-                        <div className="col-md-4 mt-3">
-                          <label className="form-label">Industries Served</label>
-                          {editing ? <input name="industriesServed" value={formState.industriesServed} onChange={handleFormChange} className="form-control" placeholder="comma separated" /> : <p>{profile.industriesServed}</p>}
-                        </div>
-
-                        <div className="col-md-4 mt-3">
-                          <label className="form-label">Availability</label>
-                          {editing ? <input name="availability" value={formState.availability} onChange={handleFormChange} className="form-control" /> : <p>{profile.availability}</p>}
-                        </div>
-                        <div className="col-md-4 mt-3">
-                          <label className="form-label">Consultation Charges</label>
-                          {editing ? <input name="consultationCharges" value={formState.consultationCharges} onChange={handleFormChange} className="form-control" /> : <p>{profile.consultationCharges}</p>}
                         </div>
 
                         {/* Partner specific fields */}
@@ -459,11 +552,174 @@ export default function CustomerDashboard(){
                         <div key={r._id} className="card mb-2">
                           <div className="card-body">
                             <h6 className="mb-1">{r.fullName} — {r.organization || '—'}</h6>
-                            <p className="mb-1"><strong>Services Offered:</strong> {Array.isArray(r.servicesOffered) ? r.servicesOffered.join(', ') : (r.servicesOffered || '—')}</p>
                             <p className="mb-0"><small>Contact: {r.primaryMobile || r.email}</small></p>
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {!loading && activeMenu === 'opted' && (
+                    <div>
+                      <h5>My Opted Services</h5>
+                      {optedServices.length === 0 && <div>No opted services yet.</div>}
+                      {optedServices.length > 0 && (
+                        <div className="table-responsive mb-3">
+                          <table className="table table-sm">
+                            <thead>
+                              <tr>
+                                <th>Service</th>
+                                <th>Expert Service</th>
+                                <th>Category</th>
+                                <th>Notes</th>
+                                <th>Added</th>
+                                <th>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {optedServices.map(o => (
+                                <tr key={o._id}>
+                                  <td>{
+                                    o.integratedServiceName || (o.integratedService && (o.integratedService.name || o.integratedService.serviceName)) || o.categoryName
+                                  }</td>
+                                  <td>{o.expertServiceName || (o.expertService && (o.expertService.serviceName || o.expertService.name)) || '—'}</td>
+                                  <td>{o.categoryName || (o.category && (o.category.name || o.category)) || '—'}{(o.subcategoryName || (o.subcategory && (o.subcategory.name || o.subcategory))) ? ` / ${o.subcategoryName || (o.subcategory && (o.subcategory.name || o.subcategory))}` : ''}</td>
+                                  <td>{o.notes || '—'}</td>
+                                  <td>{new Date(o.createdAt).toLocaleString()}</td>
+                                  <td>
+                                    <button className="btn btn-sm btn-outline-primary" onClick={() => handleEditClick(o)}>Edit</button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {/* No Add New button: users can add only if they have no opted services */}
+
+                      {showAddForm && !editingOptId && (
+                        <div className="card mt-3 p-3 opted-form">
+                          <h6>Add / Opt a Service</h6>
+                          <div className="row">
+                            <div className="col-md-6 mt-2">
+                              <label className="form-label">Expert service</label>
+                              <select name="expertServiceId" value={optForm.expertServiceId} onChange={handleOptChange} className="form-control">
+                                <option value="">-- select --</option>
+                                {expertServices.map(s => <option key={s._id} value={s._id}>{s.serviceName || s.name || s.serviceName}</option>)}
+                              </select>
+                            </div>
+                            <div className="col-md-6 mt-2">
+                              <label className="form-label">Category</label>
+                              <select name="categoryId" value={optForm.categoryId} onChange={handleOptChange} className="form-control">
+                                <option value="">-- select --</option>
+                                {serviceCategories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                              </select>
+                            </div>
+                            <div className="col-md-6 mt-2">
+                              <label className="form-label">Subcategory</label>
+                              <select name="subcategoryId" value={optForm.subcategoryId} onChange={handleOptChange} className="form-control">
+                                <option value="">-- select --</option>
+                                {serviceSubcategories
+                                  .filter(sc => {
+                                    if (!optForm.categoryId) return true;
+                                    const c = sc.category;
+                                    return !!(c && (c._id === optForm.categoryId || c === optForm.categoryId));
+                                  })
+                                  .map(sc => <option key={sc._id} value={sc._id}>{sc.name}</option>)}
+                              </select>
+                            </div>
+                            <div className="col-md-6 mt-2">
+                              <label className="form-label">Integrated Service</label>
+                              <select name="integratedServiceId" value={optForm.integratedServiceId} onChange={handleOptChange} className="form-control">
+                                <option value="">-- select --</option>
+                                {integratedServicesList
+                                  .filter(isv => {
+                                    if (optForm.categoryId) {
+                                      const c = isv.category;
+                                      if (!(c && (c._id === optForm.categoryId || c === optForm.categoryId))) return false;
+                                    }
+                                    if (optForm.subcategoryId) {
+                                      const sc = isv.subcategory;
+                                      if (!(sc && (sc._id === optForm.subcategoryId || sc === optForm.subcategoryId))) return false;
+                                    }
+                                    return true;
+                                  })
+                                  .map(isv => <option key={isv._id} value={isv._id}>{isv.name}</option>)}
+                              </select>
+                            </div>
+                            <div className="col-12 mt-2">
+                              <label className="form-label">Notes</label>
+                              <textarea name="notes" value={optForm.notes} onChange={handleOptChange} className="form-control" rows={2}></textarea>
+                            </div>
+                            <div className="col-12 mt-3 text-end">
+                              <button className="btn btn-primary" onClick={submitOpted} disabled={saving}>{saving ? 'Saving...' : 'Submit'}</button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {editingOptId && (
+                        <div className="card mt-3 p-3 opted-form">
+                          <h6>Edit Opted Service</h6>
+                          <div className="row">
+                            <div className="col-md-6 mt-2">
+                              <label className="form-label">Expert service</label>
+                              <select name="expertServiceId" value={editOptForm.expertServiceId} onChange={handleEditChange} className="form-control">
+                                <option value="">-- select --</option>
+                                {expertServices.map(s => <option key={s._id} value={s._id}>{s.serviceName || s.name || s.serviceName}</option>)}
+                              </select>
+                            </div>
+                            <div className="col-md-6 mt-2">
+                              <label className="form-label">Category</label>
+                              <select name="categoryId" value={editOptForm.categoryId} onChange={handleEditChange} className="form-control">
+                                <option value="">-- select --</option>
+                                {serviceCategories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                              </select>
+                            </div>
+                            <div className="col-md-6 mt-2">
+                              <label className="form-label">Subcategory</label>
+                              <select name="subcategoryId" value={editOptForm.subcategoryId} onChange={handleEditChange} className="form-control">
+                                <option value="">-- select --</option>
+                                {serviceSubcategories
+                                  .filter(sc => {
+                                    if (!editOptForm.categoryId) return true;
+                                    const c = sc.category;
+                                    return !!(c && (c._id === editOptForm.categoryId || c === editOptForm.categoryId));
+                                  })
+                                  .map(sc => <option key={sc._id} value={sc._id}>{sc.name}</option>)}
+                              </select>
+                            </div>
+                            <div className="col-md-6 mt-2">
+                              <label className="form-label">Integrated Service</label>
+                              <select name="integratedServiceId" value={editOptForm.integratedServiceId} onChange={handleEditChange} className="form-control">
+                                <option value="">-- select --</option>
+                                {integratedServicesList
+                                  .filter(isv => {
+                                    if (editOptForm.categoryId) {
+                                      const c = isv.category;
+                                      if (!(c && (c._id === editOptForm.categoryId || c === editOptForm.categoryId))) return false;
+                                    }
+                                    if (editOptForm.subcategoryId) {
+                                      const sc = isv.subcategory;
+                                      if (!(sc && (sc._id === editOptForm.subcategoryId || sc === editOptForm.subcategoryId))) return false;
+                                    }
+                                    return true;
+                                  })
+                                  .map(isv => <option key={isv._id} value={isv._id}>{isv.name}</option>)}
+                              </select>
+                            </div>
+                            <div className="col-12 mt-2">
+                              <label className="form-label">Notes</label>
+                              <textarea name="notes" value={editOptForm.notes} onChange={handleEditChange} className="form-control" rows={2}></textarea>
+                            </div>
+                            <div className="col-12 mt-3 text-end">
+                              <button className="btn btn-outline-secondary me-2" onClick={cancelEdit} disabled={saving}>Cancel</button>
+                              <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

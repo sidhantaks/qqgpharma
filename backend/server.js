@@ -8,7 +8,13 @@ const app = express();
 // Database URI (from .env) with sensible local fallback
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/qgpharma';
 
-app.use(cors());
+app.use(cors({
+    origin: [
+        'https://demoislara.tech',
+        'https://admin.demoislara.tech'
+    ],
+    credentials: true
+}));
 app.use(express.json());
 
 // Simple request logger to help debug incoming requests
@@ -34,6 +40,12 @@ app.use('/api/admin/manage', adminRoutes);
 // Registration routes
 const registrationRoutes = require('./routes/registrationRoutes');
 app.use('/api/registration', registrationRoutes);
+// Fallback: ensure next-number is always available even if router mounting fails
+try {
+  app.get('/api/registration/next-number', require('./controllers/registrationController').nextNumber);
+} catch (e) {
+  console.warn('Failed to mount fallback /api/registration/next-number', e && e.message);
+}
 
 // Customer auth (login + profile) for frontend customers
 const customerAuth = require('./routes/customerAuth');
@@ -53,6 +65,10 @@ app.use('/api/service-subcategories', serviceSubcategoryRoutes);
 const integratedServiceRoutes = require('./routes/integratedServiceRoutes');
 app.use('/api/integrated-services', integratedServiceRoutes);
 // console.log('Mounted /api/integrated-services');
+
+// Opted services by customers
+const optedServiceRoutes = require('./routes/optedServiceRoutes');
+app.use('/api/opted-services', optedServiceRoutes);
 
 // Directly mount controllers as fallback in case router mounting fails
 try {

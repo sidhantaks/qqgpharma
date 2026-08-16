@@ -1,0 +1,48 @@
+/* Registration form styling */
+:root { --accent:#4f9ef8; --accent-2:#7be3c9; --warm:#ffb86b; --muted:#6f8191; }
+.card.p-4 { border-radius:14px; background: linear-gradient(180deg,#ffffff,#fbfdff); border:1px solid rgba(79,158,248,0.04); }
+
+.form-control { border-radius:8px; border:1px solid #e6eefc; padding:6px 10px; box-shadow:none; height:38px; line-height:1.1; font-size:0.95rem; transition:box-shadow .12s ease, transform .08s ease; border-left:4px solid transparent; }
+.form-control:focus { border-color:var(--accent); box-shadow:0 10px 28px rgba(79,158,248,0.10); outline:0; transform:translateY(-1px); border-left-color:var(--accent-2); }
+/* colored input backgrounds */
+.form-control[data-variant="coral"] { background: linear-gradient(180deg,#fff7f6,#fff); }
+.form-control[data-variant="violet"] { background: linear-gradient(180deg,#f8f6ff,#fff); }
+.form-control[data-variant="teal"] { background: linear-gradient(180deg,#f6fffb,#fff); }
+::placeholder { color: #9aa6bb; }
+
+label { font-weight:600; color:#324057; }
+
+/* Disabled registration number styling */
+input[disabled] { background:linear-gradient(180deg,#f8fbff,#ffffff); color:#54657a; }
+
+/* Buttons */
+.btn-primary { background:linear-gradient(90deg,#1976d2,#4f9ef8); border:0; box-shadow:0 8px 24px rgba(31,97,204,0.12); }
+.btn-secondary { background:#f6f8fb; color:#2b3b53; border:1px solid #e6eefc; }
+
+/* File inputs */
+input[type=file].form-control { padding:6px 10px; height:auto; }
+
+/* Form section header */
+.card h3 { border-bottom:1px dashed rgba(15,36,80,0.05); padding-bottom:10px; }
+
+/* Section chip for headings */
+.form-section-title { display:inline-flex; align-items:center; gap:10px; margin-bottom:10px; }
+.form-section-title .chip { display:inline-block; width:10px; height:10px; border-radius:3px; background:linear-gradient(90deg,var(--accent),var(--accent-2)); box-shadow:0 6px 16px rgba(79,158,248,0.12); }
+.form-section-title h6 { margin:0; font-size:0.95rem; color:var(--muted); font-weight:700; }
+
+/* Section backgrounds */
+.card .section-bg { padding:10px 12px; border-radius:8px; margin-bottom:10px; color:#123; }
+.card .section-bg.coral { background: linear-gradient(90deg,#fff2f0,#fff7f6); border:1px solid rgba(255,107,107,0.06); }
+.card .section-bg.violet { background: linear-gradient(90deg,#f6f3ff,#fbf9ff); border:1px solid rgba(132,94,247,0.06); }
+.card .section-bg.teal { background: linear-gradient(90deg,#f1fffb,#f8fffb); border:1px solid rgba(0,194,168,0.06); }
+
+/* Responsive spacing tweaks */
+@media (max-width: 576px) {
+  .form-control { font-size:0.95rem; height:40px; }
+}
+
+/* Tighter textarea */
+textarea.form-control { height: auto; min-height:72px; padding:8px 10px; }
+
+/* Compact form rows */
+.card.p-4 .row > [class*="col-"] { padding-top:6px; padding-bottom:6px; }

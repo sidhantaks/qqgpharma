@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const Registration = require('../models/Registration');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 // Ensure upload dir exists
@@ -26,10 +27,48 @@ exports.create = async (req, res) => {
   try {
     // multer will populate files on req.files and fields on req.body
     const body = req.body || {};
+    // determine registration date (use provided or now)
+    const regDate = body.registrationDate ? new Date(body.registrationDate) : new Date();
+
+    // helper: atomically get next sequence for year/month using a counters collection
+    async function nextSeqForYearMonth(y, m) {
+      const key = `registration:${y}:${m}`;
+      // use native collection to perform atomic findOneAndUpdate
+      const resDoc = await mongoose.connection.collection('counters').findOneAndUpdate(
+        { _id: key },
+        { $inc: { seq: 1 } },
+        { upsert: true, returnOriginal: false }
+      );
+      // some Mongo driver versions return the new doc in `value`
+      const value = resDoc && (resDoc.value || resDoc);
+      return (value && value.seq) ? value.seq : 1;
+    }
+
+    // build registration number as QGPS/YYYY/MM/0001 (always generated server-side)
+    const yyyy = regDate.getFullYear();
+    const mm = String(regDate.getMonth() + 1).padStart(2, '0');
+    let generatedRegNo;
+    try {
+      const seq = await nextSeqForYearMonth(yyyy, mm);
+      const seqStr = String(seq).padStart(4, '0');
+      generatedRegNo = `QGPS/${yyyy}/${mm}/${seqStr}`;
+    } catch (e) {
+      // fallback: count existing registrations for the same year/month and use count+1
+      try {
+        const start = new Date(yyyy, regDate.getMonth(), 1);
+        const end = new Date(yyyy, regDate.getMonth() + 1, 1);
+        const cnt = await Registration.countDocuments({ registrationDate: { $gte: start, $lt: end } }).catch(()=>0);
+        const seqStr = String((cnt || 0) + 1).padStart(4, '0');
+        generatedRegNo = `QGPS/${yyyy}/${mm}/${seqStr}`;
+      } catch (e2) {
+        // final fallback: use 0001 for sequence (still keep QGPS/YYYY/MM/0001 format)
+        generatedRegNo = `QGPS/${yyyy}/${mm}/0001`;
+      }
+    }
 
     const data = {
-      registrationNumber: body.registrationNumber || `QGREG/${Date.now()}`,
-      registrationDate: body.registrationDate || Date.now(),
+      registrationNumber: generatedRegNo,
+      registrationDate: regDate,
       userCategory: body.userCategory,
       userCategoryOther: body.userCategoryOther,
 
@@ -41,7 +80,7 @@ exports.create = async (req, res) => {
       coreCompetencies: body.coreCompetencies,
       majorClients: body.majorClients,
       partnerCertifications: body.partnerCertifications,
-      partnerCountriesServed: body.partnerCountriesServed,
+      partnerCountriesServed: parsePossibleJSON(body.partnerCountriesServed),
 
       title: body.title,
       fullName: body.fullName,
@@ -60,20 +99,14 @@ exports.create = async (req, res) => {
       country: body.country,
       postalCode: body.postalCode,
 
-      professionalSummary: body.professionalSummary,
-      areasOfExpertise: body.areasOfExpertise,
-      keywords: parsePossibleJSON(body.keywords),
+      // Do not store the following fields during initial registration:
+      // professionalSummary, areasOfExpertise, keywords, education,
+      // servicesRequired, servicesOffered, availability, consultationCharges
       languagesKnown: body.languagesKnown,
       certifications: body.certifications,
-      education: body.education,
-
-      servicesRequired: parsePossibleJSON(body.servicesRequired),
-      servicesOffered: parsePossibleJSON(body.servicesOffered),
       preferredWorkingMode: body.preferredWorkingMode,
       countriesServed: body.countriesServed,
       industriesServed: body.industriesServed,
-      availability: body.availability,
-      consultationCharges: body.consultationCharges,
       username: body.username,
       // password handled below (hashed)
     };
@@ -197,6 +230,25 @@ exports.update = async (req, res) => {
       const message = field === 'username' ? 'Username already exists' : 'Duplicate field value';
       return res.status(400).json({ success: false, error: message, field, details: err.keyValue });
     }
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Return the predicted next registration number for the current month (non-reserving)
+exports.nextNumber = async (req, res) => {
+  try {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const start = new Date(yyyy, now.getMonth(), 1);
+    const end = new Date(yyyy, now.getMonth() + 1, 1);
+    const cnt = await Registration.countDocuments({ registrationDate: { $gte: start, $lt: end } }).catch(()=>0);
+    const seq = (cnt || 0) + 1;
+    const seqStr = String(seq).padStart(4, '0');
+    const generated = `QGPS/${yyyy}/${mm}/${seqStr}`;
+    return res.json({ success: true, registrationNumber: generated });
+  } catch (err) {
+    console.error('Next reg number error', err);
     return res.status(500).json({ success: false, error: err.message });
   }
 };

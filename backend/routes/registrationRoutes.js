@@ -30,6 +30,9 @@ router.post('/', upload.fields([
 
 router.get('/', registrationController.list);
 
+// Predicted next registration number (non-reserving)
+router.get('/next-number', registrationController.nextNumber);
+
 // Username availability
 router.get('/check-username', registrationController.checkUsername);
 

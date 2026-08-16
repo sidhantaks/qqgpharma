@@ -16,7 +16,7 @@
 
 .form-control {
     border-radius: 6px;
-    border       : 1px solid transparent;
+    // border       : 1px solid transparent;
     padding      : 15px 25px;
     font-size    : 14px;
     font-weight  : 400;
@@ -66,7 +66,7 @@
 .form-control:not(textarea),
 select.form-select,
 .form-select.bootstrap-select .dropdown-toggle {
-    height: 60px;
+    height: 40px;
     padding: 12px 16px;
     box-sizing: border-box;
     display: block;
@@ -76,7 +76,7 @@ select.form-select,
     .form-control:not(textarea),
     select.form-select,
     .form-select.bootstrap-select .dropdown-toggle {
-        height: 50px;
+        height: 40px;
         padding: 10px 12px;
     }
 }

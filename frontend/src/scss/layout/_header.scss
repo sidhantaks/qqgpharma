@@ -135,13 +135,17 @@
 
 // Navbar Toggler
 .navbar-toggler {
-    border: 0 solid #efbb20;
-    font-size: 16px;
-    line-height: 24px;
-    margin: 35px 0 32px 20px;
-    padding: 0;
-	float: right;
-	outline: none;
+						background: transparent;
+						border: 0;
+						padding: 0 8px;
+						cursor: pointer;
+						color: inherit;
+						display: inline-block;
+						vertical-align: middle;
+						font-size: 14px;
+						line-height: 1;
+						float: right;
+						margin-right: 15px;
 	@include respond('phone'){
 		margin: 28px 0 28px 20px;
 	}
@@ -268,11 +272,11 @@
 				border-width: 0 0 0 1px;
 				line-height: 1;
 				i{
-					font-size: 10px;
+					font-size: 12px;
 					margin-left: 5px;
-					margin-top: -3px;
+					margin-top: -4px;
 					vertical-align: middle;
-					color:#bbbbcf;
+					color:#1f2278;
 					transition: all 0.5s;
 					
 					@include respond('tab-port'){	
@@ -286,9 +290,21 @@
 						
 					}
 				}
-				@include respond('tab-land'){
-					padding: 45px 15px;
-				}
+						/* Show submenu toggle (plus/minus) on desktop and mobile */
+						.submenu-toggle {
+							display: inline-block;
+							font-size: 14px;
+							line-height: 1;
+							background: transparent;
+							border: 0;
+							padding: 0 8px;
+							cursor: pointer;
+							color: inherit;
+							vertical-align: middle;
+						}
+						.submenu-toggle i {
+							font-size: 12px;
+						}
 				@include respond('tab-port'){	
 					padding: 8px 0;
 					display: block;	
@@ -404,6 +420,19 @@
 
 			.sub-menu.two-col li a{
 				padding: 8px 20px;
+			}
+
+			// On small screens, force one-column layout for the services submenu
+			@include respond('tab-port'){
+				.sub-menu.two-col{
+					width: auto;
+					display: block;
+					grid-template-columns: 1fr;
+					padding: 0;
+				}
+				.sub-menu.two-col li a{
+					padding: 10px 20px;
+				}
 			}
 			.sub-menu{
 				li .fa {
@@ -537,6 +566,92 @@
 			float: none;
 			width: 70%;
 			min-width: 300px;
+		}
+
+		// Reduce spacing between menu items on mobile to avoid gaps
+		.menu-links {
+			.nav > li {
+				margin: 0;
+				padding: 0;
+			}
+			.nav > li > a {
+				padding: 10px 0 10px 20px;
+			}
+		}
+
+		// Put the link and +/- icon on the same row for mobile
+		.menu-links {
+			.nav > li {
+				display: flex;
+				flex-direction: row;
+				align-items: center;
+				gap: 8px;
+				padding: 0;
+				width: 100%;
+			}
+
+			.nav > li > a {
+				flex: 1 1 auto;
+				display: block;
+				padding: 10px 0 10px 20px;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+
+			/* Make the +/- icon sit to the right of the label */
+			.submenu-toggle {
+				flex: 0 0 auto;
+				margin-left: 8px;
+				order: 2;
+				align-self: center;
+				display: inline-flex;
+				width: 28px;
+				height: 28px;
+				justify-content: center;
+				align-items: center;
+			}
+
+			/* tighten space between top-level items */
+			.nav{
+				margin-right: 12px;
+				width: 100%;
+			}
+		}
+
+		/* Stronger rules to prevent wrapping when other styles override */
+		@include respond('tab-port'){
+			.menu-links .nav > li {
+				display: flex !important;
+				flex-direction: row !important;
+				align-items: center !important;
+				gap: 8px !important;
+			}
+
+			.menu-links .nav > li > a {
+				display: inline-block !important;
+				flex: 1 1 auto !important;
+				white-space: nowrap !important;
+				overflow: hidden !important;
+				text-overflow: ellipsis !important;
+				padding-right: 8px !important;
+			}
+
+			.menu-links .nav > li > .submenu-toggle,
+			.menu-links .nav > li > .submenu-icon {
+				display: inline-flex !important;
+				flex: 0 0 auto !important;
+				width: 28px !important;
+				height: 28px !important;
+				justify-content: center !important;
+				align-items: center !important;
+				margin-left: 4px !important;
+			}
+
+			/* clickable cursor for the icon */
+			.submenu-icon {
+				cursor: pointer;
+			}
 		}
 	}
 	.social-media{

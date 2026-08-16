@@ -1,6 +1,7 @@
 import PageMeta from "../components/common/PageMeta";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import { useEffect, useState } from "react";
+import { apiPath } from "../config/api";
 import Button from "../components/ui/button/Button";
 import Alert from "../components/ui/alert/Alert";
 
