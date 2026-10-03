@@ -10,7 +10,10 @@ const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb:/
 
 app.use(cors({
     origin: [
+        'http://localhost:5173',
+        'http://localhost:3000',
         'https://demoislara.tech',
+        'https://www.demoislara.tech',
         'https://admin.demoislara.tech'
     ],
     credentials: true

@@ -13,27 +13,38 @@ export default function SignInForm() {
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+  e.preventDefault();
+  setError("");
+  try {
 
-      const data = await res.json();
-      if (res.ok && data.token) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("isAdmin", "true");
-        navigate("/");
-      } else {
-        setError(data.message || "Invalid credentials");
-      }
-    } catch (err) {
-      setError("Server error");
+   const API_URL = (
+  import.meta.env.VITE_API_URL || ""
+  ).replace(/\/$/, "");
+
+  const res = await fetch(`${API_URL}/api/admin/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username,
+      password,
+    }),
+  });
+
+    const data = await res.json();
+
+    if (res.ok && data.token) {
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("isAdmin", "true");
+      navigate("/");
+    } else {
+      setError(data.message || "Invalid credentials");
     }
-  };
+  } catch (err) {
+    setError("Server error");
+  }
+};
 
   return (
     <div className="flex flex-col flex-1">
